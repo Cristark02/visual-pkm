@@ -55,36 +55,39 @@ export default function GraphCanvas() {
     // Sync store nodes to RF nodes
     setNodes((currentNodes) => {
       const rfNodes: RFNode[] = storeNodes.map((n, i) => {
-        // Keep existing positions if already placed
-        const existingNode = currentNodes.find(cn => cn.id === n.id);
-        
-        let x = 0;
-        let y = 0;
+        // Priorizar la posición guardada en JSON
+        let x = n.data.visualPosition?.x;
+        let y = n.data.visualPosition?.y;
 
-        if (existingNode) {
-          x = existingNode.position.x;
-          y = existingNode.position.y;
-        } else if (i === 0) {
-          // Usuario en el centro
-          x = 0;
-          y = 0;
-        } else {
-          // Distribución radial o floral
-          const radiusStep = 180;
-          const nodesPerRing = 8;
+        if (x === undefined || y === undefined) {
+          // Keep existing positions if already placed in session
+          const existingNode = currentNodes.find(cn => cn.id === n.id);
           
-          const ringIndex = Math.floor((i - 1) / nodesPerRing) + 1;
-          const indexInRing = (i - 1) % nodesPerRing;
-          
-          const currentRadius = ringIndex * radiusStep;
-          const angleStep = (2 * Math.PI) / nodesPerRing;
-          
-          // Añadir un pequeño offset para que los anillos se entrelacen
-          const angleOffset = (ringIndex % 2) * (angleStep / 2);
-          const angle = indexInRing * angleStep + angleOffset;
+          if (existingNode) {
+            x = existingNode.position.x;
+            y = existingNode.position.y;
+          } else if (i === 0) {
+            // Usuario en el centro
+            x = 0;
+            y = 0;
+          } else {
+            // Distribución radial o floral
+            const radiusStep = 180;
+            const nodesPerRing = 8;
+            
+            const ringIndex = Math.floor((i - 1) / nodesPerRing) + 1;
+            const indexInRing = (i - 1) % nodesPerRing;
+            
+            const currentRadius = ringIndex * radiusStep;
+            const angleStep = (2 * Math.PI) / nodesPerRing;
+            
+            // Añadir un pequeño offset para que los anillos se entrelacen
+            const angleOffset = (ringIndex % 2) * (angleStep / 2);
+            const angle = indexInRing * angleStep + angleOffset;
 
-          x = currentRadius * Math.cos(angle);
-          y = currentRadius * Math.sin(angle);
+            x = currentRadius * Math.cos(angle);
+            y = currentRadius * Math.sin(angle);
+          }
         }
 
         const isCluster = n.type === 'cluster';
@@ -106,30 +109,27 @@ export default function GraphCanvas() {
     });
 
     // 2. Cálculo de Aristas Paralelas
-    // Agrupamos aristas por el par de nodos sin importar la dirección
     const edgeGroups = new Map<string, typeof storeEdges>();
-    
     storeEdges.forEach(e => {
-      // Creamos un ID canónico ordenando alfabéticamente los nodos
-      const canonicalId = [e.sourceNodeId, e.targetNodeId].sort().join('|');
-      if (!edgeGroups.has(canonicalId)) {
-        edgeGroups.set(canonicalId, []);
-      }
-      edgeGroups.get(canonicalId)!.push(e);
+      const pairId = [e.sourceNodeId, e.targetNodeId].sort().join('-');
+      if (!edgeGroups.has(pairId)) edgeGroups.set(pairId, []);
+      edgeGroups.get(pairId)!.push(e);
     });
 
     const rfEdges: RFEdge[] = [];
     
-    edgeGroups.forEach(group => {
-      const count = group.length;
+    edgeGroups.forEach((group) => {
       group.forEach((e, index) => {
-        // Calcular offset para expandir las líneas en arcos paralelos
-        // Si hay 1 línea: offset = 0
-        // Si hay 2 líneas: offsets = -0.5, 0.5 (multiplicado luego)
-        // Si hay 3 líneas: offsets = -1, 0, 1
-        const offsetIndex = count === 1 ? 0 : (index - (count - 1) / 2);
-        const isReversed = e.sourceNodeId > e.targetNodeId; // Para alinear el offset visualmente si se invierte el source/target
-        const finalOffset = isReversed ? -offsetIndex : offsetIndex;
+        const isBidirectional = group.some(ge => ge.sourceNodeId === e.targetNodeId && ge.targetNodeId === e.sourceNodeId);
+        let offsetIndex = index;
+        
+        if (isBidirectional) {
+          const sortedGroup = [...group].sort((a,b) => a.id.localeCompare(b.id));
+          const idx = sortedGroup.findIndex(ge => ge.id === e.id);
+          offsetIndex = idx === 0 ? 0 : Math.ceil(idx / 2) * (idx % 2 === 0 ? 1 : -1);
+        } else if (group.length > 1) {
+          offsetIndex = index === 0 ? 0 : Math.ceil(index / 2) * (index % 2 === 0 ? 1 : -1);
+        }
 
         const { stroke, strokeWidth, strokeDasharray, isZigZag } = getEdgeStyle(e.semanticRelationshipType || '');
 
@@ -137,7 +137,7 @@ export default function GraphCanvas() {
           id: e.id,
           source: e.sourceNodeId,
           target: e.targetNodeId,
-          type: 'parallel', // Custom edge component
+          type: 'parallel',
           animated: false,
           style: { stroke, strokeWidth, strokeDasharray },
           markerEnd: {
@@ -145,19 +145,19 @@ export default function GraphCanvas() {
             color: stroke,
           },
           data: {
-            offsetIndex: finalOffset,
-            isZigZag,
-            ...e.data
+            ...e.data,
+            semanticRelationshipType: e.semanticRelationshipType,
+            offsetIndex,
+            isZigZag: isZigZag || e.semanticRelationshipType === 'Conflicto'
           }
         });
       });
     });
 
-    setNodes(rfNodes);
     setEdges(rfEdges);
   }, [storeNodes, storeEdges, setNodes, setEdges]);
 
-  const { setSelectedEntity, addEdge } = useStore();
+  const { setSelectedEntity, addEdge, updateNodeData } = useStore();
 
   const onNodeClick = (_: React.MouseEvent, node: RFNode) => {
     setSelectedEntity(node.id, 'node');
@@ -177,8 +177,19 @@ export default function GraphCanvas() {
     }
   };
 
+  const onNodeDragStop = (_: React.MouseEvent, node: RFNode) => {
+    updateNodeData(node.id, { visualPosition: node.position });
+  };
+
   return (
     <div className="w-full h-full bg-gray-50">
+      <svg style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0 }}>
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
+          </marker>
+        </defs>
+      </svg>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -190,6 +201,7 @@ export default function GraphCanvas() {
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
         onConnect={onConnect}
+        onNodeDragStop={onNodeDragStop}
         connectionMode={ConnectionMode.Loose}
         fitView
       >

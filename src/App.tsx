@@ -10,7 +10,7 @@ import Toolbar from './components/Toolbar';
 import { exportToVectorPDF } from './lib/pdfExporter';
 
 function App() {
-  const { metadata, nodes, edges, loadDocument, clearDocument, selectedEntityId } = useStore();
+  const { metadata, nodes, loadDocument, clearDocument, selectedEntityId } = useStore();
   const [error, setError] = useState<string | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
@@ -186,10 +186,19 @@ function App() {
   const handleExportZIP = async () => {
     const JSZip = (await import('jszip')).default;
     const { saveAs } = await import('file-saver');
+    const { DEFAULT_TAXONOMY } = await import('./config/taxonomy');
+
     const zip = new JSZip();
     const state = useStore.getState();
     const stateDoc = { documentVersion: state.documentVersion, metadata: state.metadata, nodes: state.nodes, edges: state.edges };
+    
+    // Core state
     zip.file("state.json", JSON.stringify(stateDoc, null, 2));
+    
+    // Configs
+    const configFolder = zip.folder("config");
+    configFolder?.file("taxonomy.json", JSON.stringify(DEFAULT_TAXONOMY, null, 2));
+
     const content = await zip.generateAsync({ type: "blob" });
     saveAs(content, "social-link-backup.zip");
   };

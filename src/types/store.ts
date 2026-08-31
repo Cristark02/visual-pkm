@@ -14,6 +14,7 @@ export interface NodeData {
     primaryAvatarPath?: string;
   };
   biographicalAttributes?: Record<string, string>;
+  visualPosition?: { x: number, y: number };
 }
 
 export interface NodeModel {

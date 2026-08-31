@@ -1,20 +1,23 @@
 import { memo } from 'react';
-import { BaseEdge, getBezierPath } from 'reactflow';
+import { BaseEdge } from 'reactflow';
 import type { EdgeProps } from 'reactflow';
+import { getTaxonomyRelation } from '../../config/taxonomy';
 
 const ParallelEdge = ({
   sourceX,
   sourceY,
   targetX,
   targetY,
-  sourcePosition,
-  targetPosition,
   style = {},
   markerEnd,
   data,
 }: EdgeProps) => {
   const offsetIndex = data?.offsetIndex || 0;
   const isZigZag = data?.isZigZag || false;
+  
+  // Use the taxonomy rule for this edge
+  const semanticType = data?.semanticRelationshipType || 'Conexión';
+  const taxRule = getTaxonomyRelation(semanticType);
 
   let path = '';
 
@@ -30,17 +33,13 @@ const ParallelEdge = ({
     if (length === 0) {
       path = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
     } else {
-      // Vector perpendicular (normalizado)
       const nx = -dy / length;
       const ny = dx / length;
 
-      // Desplazamiento fijo por índice
-      const spacing = 35; // Pixeles de separación entre aristas paralelas
+      const spacing = 35;
       const offsetDistance = offsetIndex * spacing;
 
       if (isZigZag) {
-        // Generar un patrón zig-zag a lo largo de la línea base desplazada
-        // Para simplificar, dividimos la línea en segmentos
         const segments = 10;
         let zigZagPath = `M ${sourceX} ${sourceY}`;
         for (let i = 1; i <= segments; i++) {
@@ -48,7 +47,6 @@ const ParallelEdge = ({
           const baseX = sourceX + dx * t;
           const baseY = sourceY + dy * t;
           
-          // Alternar arriba y abajo de la línea base
           const zigFactor = (i % 2 === 0 ? 1 : -1) * 10;
           const px = baseX + nx * (offsetDistance + zigFactor);
           const py = baseY + ny * (offsetDistance + zigFactor);
@@ -57,11 +55,10 @@ const ParallelEdge = ({
         }
         path = zigZagPath;
       } else {
-        // Curva Cuadrática (Q) desplazada en el medio
         const mx = sourceX + dx / 2;
         const my = sourceY + dy / 2;
 
-        const cx = mx + nx * offsetDistance * 2; // Multiplicamos por 2 para exagerar el punto de control
+        const cx = mx + nx * offsetDistance * 2;
         const cy = my + ny * offsetDistance * 2;
 
         path = `M ${sourceX},${sourceY} Q ${cx},${cy} ${targetX},${targetY}`;
@@ -69,18 +66,23 @@ const ParallelEdge = ({
     }
   }
 
-  // Encapsulamos la trayectoria visible dentro de un "sendero transparente" más grueso
-  // para facilitar los eventos táctiles (como estipula el PDD)
+  const edgeStyle = {
+    ...style,
+    stroke: taxRule.color,
+    strokeWidth: taxRule.width,
+    strokeDasharray: taxRule.dashed ? '6 6' : 'none',
+  };
+
   return (
     <>
       <path
         d={path}
         fill="none"
         strokeOpacity={0}
-        strokeWidth={20} // Hitbox transparente ancho
-        className="react-flow__edge-interaction"
+        strokeWidth={20}
+        className="react-flow__edge-interaction cursor-pointer"
       />
-      <BaseEdge path={path} markerEnd={markerEnd} style={style} />
+      <BaseEdge path={path} markerEnd={taxRule.arrow ? "url(#arrowhead)" : markerEnd} style={edgeStyle} />
     </>
   );
 };

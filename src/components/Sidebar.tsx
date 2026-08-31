@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { X, Edit2, Check, Camera } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { saveDocument } from '../lib/fsManager';
+import { DEFAULT_TAXONOMY } from '../config/taxonomy';
 import type { NodeModel, EdgeModel } from '../types/store';
 
 export default function Sidebar() {
@@ -139,7 +140,23 @@ export default function Sidebar() {
             )}
             
             {selectedEntityType === 'edge' && (
-              <input type="text" value={relationType} onChange={e => setRelationType(e.target.value)} placeholder="Ej: Amigo, Ex-pareja, Familiar" className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all shadow-sm" />
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-500">Tipo de Relación</label>
+                <select 
+                  value={relationType} 
+                  onChange={e => setRelationType(e.target.value)}
+                  className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all shadow-sm"
+                >
+                  <option value="Conexión">-- Selecciona el tipo --</option>
+                  {DEFAULT_TAXONOMY.map(cat => (
+                    <optgroup key={cat.name} label={cat.name}>
+                      {cat.relationships.map(rel => (
+                        <option key={rel.id} value={rel.id}>{rel.id}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
             )}
           </div>
         )}
