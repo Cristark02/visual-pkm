@@ -3,6 +3,7 @@ export type NodeType = 'individual' | 'cluster';
 export interface IdentityData {
   givenName: string;
   familyName?: string;
+  alias?: string;
 }
 
 export interface NodeData {

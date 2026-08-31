@@ -40,19 +40,27 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
     }
   }, [isEditing]);
 
+  const alias = identity?.alias || '';
   const givenName = identity?.givenName || '';
   const familyName = identity?.familyName || '';
   const fullName = [givenName, familyName].filter(Boolean).join(' ');
-  const bgColor = stringToColor(fullName);
+  const bgColor = stringToColor(fullName || alias || 'X');
+
+  const primaryName = alias || fullName || 'Desconocido';
+  const secondaryName = alias ? fullName : null;
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setEditName(givenName);
+    setEditName(alias ? alias : givenName);
     setIsEditing(true);
   };
 
   const saveName = () => {
-    updateNodeData(id, { identity: { givenName: editName, familyName } });
+    if (alias) {
+      updateNodeData(id, { identity: { ...identity, givenName, alias: editName } });
+    } else {
+      updateNodeData(id, { identity: { ...identity, givenName: editName, familyName } });
+    }
     setIsEditing(false);
   };
 
@@ -149,23 +157,33 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
       </div>
 
       <div 
-        className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/95 backdrop-blur px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-gray-100 z-30 flex items-center gap-1 transition-colors duration-300"
-        style={{ color: textColor }}
+        className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/95 backdrop-blur px-3 py-1.5 rounded-xl shadow-sm border border-gray-100 z-30 flex flex-col items-center transition-colors duration-300"
       >
-        {isEditing ? (
-          <input 
-            ref={inputRef}
-            value={editName}
-            onChange={e => setEditName(e.target.value)}
-            onBlur={saveName}
-            onKeyDown={onKeyDown}
-            className="bg-transparent outline-none w-20 text-center font-bold"
-            style={{ color: textColor }}
-          />
-        ) : (
-          <span>{fullName || 'Desconocido'}</span>
+        <div className="flex items-center gap-1" style={{ color: textColor }}>
+          {isEditing ? (
+            <input 
+              ref={inputRef}
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              onBlur={saveName}
+              onKeyDown={onKeyDown}
+              className="bg-transparent outline-none w-20 text-center font-bold"
+              style={{ color: textColor }}
+            />
+          ) : (
+            <span className="font-bold text-xs">{primaryName}</span>
+          )}
+          {genderIcon && !isEditing && <span className="opacity-70 text-[10px] ml-0.5">{genderIcon}</span>}
+        </div>
+        
+        {secondaryName && !isEditing && (
+          <span 
+            className="text-[9px] font-semibold mt-0.5"
+            style={{ color: data.color ? textColor : '#9ca3af', opacity: data.color ? 0.6 : 1 }}
+          >
+            {secondaryName}
+          </span>
         )}
-        {genderIcon && !isEditing && <span className="opacity-70 text-[10px] ml-0.5">{genderIcon}</span>}
       </div>
     </div>
   );

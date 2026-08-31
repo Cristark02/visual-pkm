@@ -92,6 +92,14 @@ export default function Sidebar() {
                   className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
                 />
               </div>
+              <input 
+                type="text" 
+                value={(entity as NodeModel).data.identity?.alias || ''} 
+                onChange={e => handleChange(() => updateNodeData(entity.id, { identity: { ...(entity as NodeModel).data.identity, alias: e.target.value } }))} 
+                onBlur={triggerSave}
+                placeholder="Alias / Apodo" 
+                className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
+              />
               <button onClick={() => alert('Próximamente: Selector de archivos nativo.')} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all cursor-pointer shadow-sm">
                 <Camera size={16} className="text-indigo-500" /> Asignar Foto
               </button>
@@ -99,14 +107,56 @@ export default function Sidebar() {
           )}
           
           {isCluster && (
-            <input 
-              type="text" 
-              value={(entity as NodeModel).data.semanticLabel || ''} 
-              onChange={e => handleChange(() => updateNodeData(entity.id, { semanticLabel: e.target.value }))} 
-              onBlur={triggerSave}
-              placeholder="Nombre del Grupo" 
-              className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
-            />
+            <div className="space-y-4">
+              <input 
+                type="text" 
+                value={(entity as NodeModel).data.semanticLabel || ''} 
+                onChange={e => handleChange(() => updateNodeData(entity.id, { semanticLabel: e.target.value }))} 
+                onBlur={triggerSave}
+                placeholder="Nombre del Grupo" 
+                className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
+              />
+
+              <label className="flex items-center gap-2 cursor-pointer bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={(entity as NodeModel).data.isChainLinked || false}
+                  onChange={(e) => {
+                    updateNodeData(entity.id, { isChainLinked: e.target.checked });
+                    triggerSave();
+                  }}
+                  className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                />
+                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Vincular Arrastre (Candado)
+                </span>
+              </label>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Miembros del Grupo</label>
+                <div className="bg-white border border-gray-200 rounded-xl p-3 max-h-40 overflow-y-auto no-scrollbar shadow-inner">
+                  {nodes.filter(n => n.type === 'individual' && n.data.clusterIds?.includes(entity.id)).length > 0 ? (
+                    <ul className="space-y-2">
+                      {nodes
+                        .filter(n => n.type === 'individual' && n.data.clusterIds?.includes(entity.id))
+                        .map(member => {
+                          const mId = member.data.identity;
+                          const mName = mId?.alias || [mId?.givenName, mId?.familyName].filter(Boolean).join(' ') || 'Desconocido';
+                          return (
+                            <li key={member.id} className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                              <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: member.data.color || '#9ca3af' }} />
+                              <span className="truncate">{mName}</span>
+                            </li>
+                          );
+                        })
+                      }
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-gray-400 italic text-center py-2">No hay miembros en este grupo.</p>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
 
           {(isIndividual || isCluster) && (
