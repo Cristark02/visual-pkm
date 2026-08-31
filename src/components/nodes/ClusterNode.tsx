@@ -75,7 +75,7 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
           }}
           style={{ background: 'transparent', border: 'none', width: '48px', height: '48px' }}
         >
-          <div className="absolute bottom-0 left-0 w-12 h-12 transform translate-y-1/2 -translate-x-1/2 text-indigo-600 bg-white shadow-xl border-2 border-indigo-200 rounded-full flex items-center justify-center hover:bg-indigo-50 active:bg-indigo-100 transition-colors pointer-events-auto cursor-sw-resize z-50">
+          <div className="absolute bottom-0 left-0 w-12 h-12 transform translate-y-1/2 -translate-x-1/2 text-indigo-600 bg-white shadow-xl border-2 border-indigo-200 rounded-full flex items-center justify-center hover:bg-indigo-50 active:bg-indigo-100 transition-colors pointer-events-auto cursor-sw-resize z-50 nodrag nopan">
             <ArrowDownLeft size={24} />
           </div>
         </NodeResizeControl>
