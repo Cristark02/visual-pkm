@@ -17,6 +17,7 @@ export interface NodeData {
   visualPosition?: { x: number, y: number };
   visualDimensions?: { width: number, height: number };
   clusterIds?: string[];
+  isChainLinked?: boolean;
 }
 
 export interface NodeModel {

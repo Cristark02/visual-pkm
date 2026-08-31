@@ -1,8 +1,9 @@
 import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import type { NodeProps } from 'reactflow';
-import { NodeResizer } from '@reactflow/node-resizer';
+import { NodeResizeControl } from '@reactflow/node-resizer';
 import '@reactflow/node-resizer/dist/style.css';
+import { Link2, Unlink, ArrowDownLeft } from 'lucide-react';
 import type { NodeData } from '../../types/store';
 import { useStore } from '../../store/useStore';
 
@@ -27,15 +28,34 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
 
   return (
     <>
-      <NodeResizer 
-        color="#818cf8" 
-        isVisible={selected} 
-        minWidth={150} 
-        minHeight={150} 
-        onResizeEnd={(_, params) => {
-          updateNodeData(id, { visualDimensions: { width: params.width, height: params.height } });
-        }}
-      />
+      {selected && (
+        <div className="absolute -top-14 left-1/2 transform -translate-x-1/2 pointer-events-auto flex items-center bg-white shadow-xl rounded-full px-4 py-2 gap-3 border border-indigo-100 z-50 animate-in fade-in slide-in-from-bottom-2">
+          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Arrastre en Cadena</span>
+          <button 
+            onClick={(e) => { e.stopPropagation(); updateNodeData(id, { isChainLinked: !data.isChainLinked }); }}
+            className={`p-1.5 rounded-full transition-colors cursor-pointer ${data.isChainLinked ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+            title={data.isChainLinked ? "Desvincular solapamientos" : "Vincular grupos solapados"}
+          >
+            {data.isChainLinked ? <Link2 size={16} /> : <Unlink size={16} />}
+          </button>
+        </div>
+      )}
+
+      {selected && (
+        <NodeResizeControl 
+          minWidth={150} 
+          minHeight={150}
+          position="bottom-left"
+          onResizeEnd={(_, params) => {
+            updateNodeData(id, { visualDimensions: { width: params.width, height: params.height } });
+          }}
+          style={{ background: 'transparent', border: 'none' }}
+        >
+          <div className="absolute bottom-0 left-0 w-8 h-8 transform translate-y-1/2 -translate-x-1/2 text-indigo-500 bg-white shadow-md border border-indigo-200 rounded-full flex items-center justify-center hover:bg-indigo-50 transition-colors pointer-events-auto cursor-sw-resize z-50">
+            <ArrowDownLeft size={16} />
+          </div>
+        </NodeResizeControl>
+      )}
       
       <div className="w-full h-full relative z-0">
         <svg 

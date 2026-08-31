@@ -190,21 +190,23 @@ export default function GraphCanvas() {
       const allClusters = nodesRef.current.filter(n => n.type === 'cluster');
       const connectedClusters = new Set<string>([node.id]);
       
-      let added = true;
-      while (added) {
-        added = false;
-        allClusters.forEach(c => {
-          if (!connectedClusters.has(c.id)) {
-            const overlaps = Array.from(connectedClusters).some(ccId => {
-              const cc = nodesRef.current.find(n => n.id === ccId);
-              return cc ? checkOverlap(c, cc) : false;
-            });
-            if (overlaps) {
-              connectedClusters.add(c.id);
-              added = true;
+      if (node.data.isChainLinked) {
+        let added = true;
+        while (added) {
+          added = false;
+          allClusters.forEach(c => {
+            if (!connectedClusters.has(c.id)) {
+              const overlaps = Array.from(connectedClusters).some(ccId => {
+                const cc = nodesRef.current.find(n => n.id === ccId);
+                return cc ? checkOverlap(c, cc) : false;
+              });
+              if (overlaps) {
+                connectedClusters.add(c.id);
+                added = true;
+              }
             }
-          }
-        });
+          });
+        }
       }
 
       const members = nodesRef.current.filter(n => {
