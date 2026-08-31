@@ -13,7 +13,8 @@ import type {
   Edge as RFEdge,
   Node as RFNode,
   NodeChange,
-  EdgeChange
+  EdgeChange,
+  NodePositionChange
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useStore } from '../store/useStore';
@@ -31,7 +32,6 @@ const edgeTypes = {
   parallel: ParallelEdge,
 };
 
-// Heurística simple para determinar la forma si no está asignada manualmente
 const determineShape = (nodeId: string, edges: any[]) => {
   const relatedEdges = edges.filter(e => e.sourceNodeId === nodeId || e.targetNodeId === nodeId);
   let isPartner = false;
@@ -51,14 +51,44 @@ const determineShape = (nodeId: string, edges: any[]) => {
   return 'circle';
 };
 
+const checkOverlap = (n1: RFNode, n2: RFNode) => {
+  const w1 = n1.data?.visualDimensions?.width || 400;
+  const h1 = n1.data?.visualDimensions?.height || 400;
+  const w2 = n2.data?.visualDimensions?.width || 400;
+  const h2 = n2.data?.visualDimensions?.height || 400;
+  
+  return (
+    n1.position.x < n2.position.x + w2 &&
+    n1.position.x + w1 > n2.position.x &&
+    n1.position.y < n2.position.y + h2 &&
+    n1.position.y + h1 > n2.position.y
+  );
+};
+
+const isInside = (individual: RFNode, cluster: RFNode) => {
+  const cx = individual.position.x + 40;
+  const cy = individual.position.y + 40;
+  const cw = cluster.data?.visualDimensions?.width || 400;
+  const ch = cluster.data?.visualDimensions?.height || 400;
+  
+  return (
+    cx >= cluster.position.x &&
+    cx <= cluster.position.x + cw &&
+    cy >= cluster.position.y &&
+    cy <= cluster.position.y + ch
+  );
+};
+
 export default function GraphCanvas() {
   const { nodes: storeNodes, edges: storeEdges, setSelectedEntity, addEdge: addStoreEdge, updateNodeData } = useStore();
   
   const [nodes, setNodes] = useState<RFNode[]>([]);
   const [edges, setEdges] = useState<RFEdge[]>([]);
 
-  // Ref to hold current rendered nodes for accurate overlap calculations
   const nodesRef = useRef<RFNode[]>([]);
+  
+  // Ref para capturar el estado inicial de un drag
+  const dragContext = useRef<{ active: boolean, clusterIds: string[], memberIds: string[] }>({ active: false, clusterIds: [], memberIds: [] });
 
   useEffect(() => {
     const rfNodes: RFNode[] = storeNodes.map((n, i) => {
@@ -67,7 +97,6 @@ export default function GraphCanvas() {
 
       if (x === undefined || y === undefined) {
         const existingNode = nodesRef.current.find(cn => cn.id === n.id);
-        
         if (existingNode) {
           x = existingNode.position.x;
           y = existingNode.position.y;
@@ -90,19 +119,20 @@ export default function GraphCanvas() {
       }
 
       const isCluster = n.type === 'cluster';
+      const w = n.data.visualDimensions?.width || (isCluster ? 400 : 80);
+      const h = n.data.visualDimensions?.height || (isCluster ? 400 : 80);
 
       return {
         id: n.id,
         type: n.type,
         position: { x, y },
-        // IMPORTANTE: Ya no usamos parentNode. Todos los nodos son libres (para permitir solapamiento tipo Venn)
-        style: isCluster ? { width: 400, height: 400, zIndex: -1 } : { zIndex: 1 },
+        style: isCluster ? { width: w, height: h, zIndex: -1 } : { width: w, height: h, zIndex: 1 },
         data: {
           ...n.data,
-          // Si el usuario ya le asignó una forma manualmente (biographicalAttributes.shape), se usará esa en el componente
+          visualDimensions: { width: w, height: h },
           computedShape: isCluster ? undefined : determineShape(n.id, storeEdges)
         },
-        dragHandle: '.react-flow__node' // Usar todo el nodo, pero react-flow__node_interaction prioriza
+        dragHandle: '.react-flow__node'
       };
     });
     
@@ -155,53 +185,94 @@ export default function GraphCanvas() {
     setEdges(rfEdges);
   }, [storeEdges]);
 
+  const onNodeDragStart = useCallback((_: React.MouseEvent, node: RFNode) => {
+    if (node.type === 'cluster') {
+      const allClusters = nodesRef.current.filter(n => n.type === 'cluster');
+      const connectedClusters = new Set<string>([node.id]);
+      
+      let added = true;
+      while (added) {
+        added = false;
+        allClusters.forEach(c => {
+          if (!connectedClusters.has(c.id)) {
+            const overlaps = Array.from(connectedClusters).some(ccId => {
+              const cc = nodesRef.current.find(n => n.id === ccId);
+              return cc ? checkOverlap(c, cc) : false;
+            });
+            if (overlaps) {
+              connectedClusters.add(c.id);
+              added = true;
+            }
+          }
+        });
+      }
+
+      const members = nodesRef.current.filter(n => {
+        if (n.type !== 'individual') return false;
+        return Array.from(connectedClusters).some(ccId => {
+          const cc = nodesRef.current.find(x => x.id === ccId);
+          return cc ? isInside(n, cc) : false;
+        });
+      });
+
+      dragContext.current = {
+        active: true,
+        clusterIds: Array.from(connectedClusters),
+        memberIds: members.map(m => m.id)
+      };
+    } else {
+      dragContext.current = { active: false, clusterIds: [], memberIds: [] };
+    }
+  }, []);
+
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((nds) => {
-      const clusterDrags = changes.filter(c => c.type === 'position' && c.dragging);
+      const clusterDrags = changes.filter(c => c.type === 'position' && c.dragging) as NodePositionChange[];
       const extraChanges: NodeChange[] = [];
       
-      clusterDrags.forEach(change => {
-        if (change.type === 'position' && change.position) {
-          const cluster = nds.find(n => n.id === change.id);
-          if (cluster && cluster.type === 'cluster') {
-            const dx = change.position.x - cluster.position.x;
-            const dy = change.position.y - cluster.position.y;
+      // Dimension changes processing (NodeResizer)
+      changes.filter(c => c.type === 'dimensions').forEach((dimChange: any) => {
+        if (dimChange.dimensions) {
+          updateNodeData(dimChange.id, { visualDimensions: dimChange.dimensions });
+        }
+      });
+
+      if (clusterDrags.length > 0 && dragContext.current.active) {
+        // Encontramos el delta del nodo arrastrado principal
+        const mainDrag = clusterDrags[0];
+        const mainNode = nds.find(n => n.id === mainDrag.id);
+        
+        if (mainNode && mainDrag.position) {
+          const dx = mainDrag.position.x - mainNode.position.x;
+          const dy = mainDrag.position.y - mainNode.position.y;
+
+          if (dx !== 0 || dy !== 0) {
+            const allToMove = new Set<string>([...dragContext.current.clusterIds, ...dragContext.current.memberIds]);
+            allToMove.delete(mainDrag.id); // No mover al principal de nuevo
             
-            if (dx !== 0 || dy !== 0) {
-              // Buscar a quién barrer (los que están dentro del clúster ANTES de aplicar el movimiento)
-              const members = nds.filter(n => {
-                if (n.type !== 'individual') return false;
-                const cx = n.position.x + 40; // 40 es el offset al centro del nodo Individual (80x80)
-                const cy = n.position.y + 40;
-                return (
-                  cx >= cluster.position.x &&
-                  cx <= cluster.position.x + 400 &&
-                  cy >= cluster.position.y &&
-                  cy <= cluster.position.y + 400
-                );
-              });
-              
-              members.forEach(m => {
+            allToMove.forEach((id: string) => {
+              const n = nds.find(x => x.id === id);
+              if (n) {
                 extraChanges.push({
                   type: 'position',
-                  id: m.id,
+                  id: n.id,
                   position: {
-                    x: m.position.x + dx,
-                    y: m.position.y + dy
+                    x: n.position.x + dx,
+                    y: n.position.y + dy
                   },
                   dragging: true
                 });
-              });
-            }
+              }
+            });
           }
         }
-      });
+      }
       
       const newNodes = applyNodeChanges([...changes, ...extraChanges], nds);
       nodesRef.current = newNodes;
       return newNodes;
     });
-  }, []);
+  }, [updateNodeData]);
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
     setEdges((eds) => applyEdgeChanges(changes, eds));
@@ -226,27 +297,35 @@ export default function GraphCanvas() {
   }, [setSelectedEntity]);
 
   const onNodeDragStop = useCallback((_: React.MouseEvent, node: RFNode) => {
-    // 1. Guardar posición
-    updateNodeData(node.id, { visualPosition: node.position });
-    
-    // 2. Si es un individuo, calcular en qué clústeres cae (Lógica Diagrama de Venn)
-    if (node.type === 'individual') {
-      const cx = node.position.x + 40;
-      const cy = node.position.y + 40;
-      
-      const currentNodes = nodesRef.current;
-      const overlappingClusters = currentNodes.filter(n => {
-        if (n.type !== 'cluster') return false;
-        return (
-          cx >= n.position.x &&
-          cx <= n.position.x + 400 &&
-          cy >= n.position.y &&
-          cy <= n.position.y + 400
-        );
-      }).map(c => c.id);
-      
-      updateNodeData(node.id, { clusterIds: overlappingClusters });
+    const currentNodes = nodesRef.current;
+
+    // Guardar posiciones de todos los que se hayan movido
+    if (dragContext.current.active) {
+      const movedIds = new Set([...dragContext.current.clusterIds, ...dragContext.current.memberIds, node.id]);
+      movedIds.forEach(id => {
+        const n = currentNodes.find(x => x.id === id);
+        if (n) updateNodeData(id, { visualPosition: n.position });
+      });
+      dragContext.current.active = false;
+    } else {
+      updateNodeData(node.id, { visualPosition: node.position });
     }
+    
+    // Recalcular membresías para todos los individuos
+    currentNodes.forEach(n => {
+      if (n.type === 'individual') {
+        const overlappingClusters = currentNodes.filter(c => {
+          if (c.type !== 'cluster') return false;
+          return isInside(n, c);
+        }).map(c => c.id);
+        
+        // Solo actualizar si hay un cambio real para evitar renders infinitos
+        const oldIds = n.data.clusterIds || [];
+        if (oldIds.length !== overlappingClusters.length || !oldIds.every(id => overlappingClusters.includes(id))) {
+          updateNodeData(n.id, { clusterIds: overlappingClusters });
+        }
+      }
+    });
   }, [updateNodeData]);
 
   return (
@@ -258,6 +337,7 @@ export default function GraphCanvas() {
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeDragStart={onNodeDragStart}
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}

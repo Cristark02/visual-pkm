@@ -1,51 +1,69 @@
 import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import type { NodeProps } from 'reactflow';
+import { NodeResizer } from '@reactflow/node-resizer';
+import '@reactflow/node-resizer/dist/style.css';
 import type { NodeData } from '../../types/store';
 
 const ClusterNode = ({ data, selected }: NodeProps<NodeData>) => {
   const shape = data.biographicalAttributes?.shape || 'square';
   
-  let shapeClasses = `w-full h-full min-w-[200px] min-h-[200px] bg-indigo-50/30 border-2 border-dashed transition-colors relative z-0
-    ${selected ? 'border-indigo-400 bg-indigo-100/40' : 'border-indigo-200'}
-  `;
-
-  if (shape === 'circle') shapeClasses += ' rounded-full';
-  else if (shape === 'square') shapeClasses += ' rounded-2xl';
-
-  const clipPaths: Record<string, string> = {
-    star: 'polygon(50% 0%, 65% 35%, 100% 40%, 75% 65%, 85% 100%, 50% 80%, 15% 100%, 25% 65%, 0% 40%, 35% 35%)',
-    heart: 'polygon(50% 100%, 10% 60%, 0% 30%, 15% 0%, 50% 25%, 85% 0%, 100% 30%, 90% 60%)',
-    hexagon: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-    diamond: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
-    triangle: 'polygon(50% 0%, 100% 100%, 0% 100%)',
-    pentagon: 'polygon(50% 0%, 100% 38%, 81% 100%, 19% 100%, 0% 38%)',
-    octagon: 'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)',
-    shield: 'polygon(0% 0%, 100% 0%, 100% 75%, 50% 100%, 0% 75%)'
+  const svgPaths: Record<string, string> = {
+    circle: '<ellipse cx="50" cy="50" rx="48" ry="48" />',
+    square: '<rect x="2" y="2" width="96" height="96" rx="8" />',
+    star: '<polygon points="50,2 65,35 98,40 75,65 85,98 50,80 15,98 25,65 2,40 35,35" />',
+    heart: '<polygon points="50,98 10,60 2,30 15,2 50,25 85,2 98,30 90,60" />',
+    hexagon: '<polygon points="25,2 75,2 98,50 75,98 25,98 2,50" />',
+    diamond: '<polygon points="50,2 98,50 50,98 2,50" />',
+    triangle: '<polygon points="50,2 98,98 2,98" />',
+    pentagon: '<polygon points="50,2 98,38 81,98 19,98 2,38" />',
+    octagon: '<polygon points="30,2 70,2 98,30 98,70 70,98 30,98 2,70 2,30" />',
+    shield: '<polygon points="2,2 98,2 98,75 50,98 2,75" />'
   };
 
-  const clipPathStyle = clipPaths[shape] || 'none';
+  const svgInner = svgPaths[shape] || svgPaths.square;
 
   return (
-    <div 
-      className={shapeClasses}
-      style={{ clipPath: clipPathStyle }}
-    >
-      <Handle type="target" position={Position.Top} className="opacity-0" />
+    <>
+      <NodeResizer 
+        color="#818cf8" 
+        isVisible={selected} 
+        minWidth={150} 
+        minHeight={150} 
+      />
       
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
-        <h3 className="text-xl font-black text-indigo-900/30 uppercase tracking-widest">
-          {data.semanticLabel || 'Grupo'}
-        </h3>
-        {data.description && (
-          <p className="text-sm font-bold text-indigo-800/40 mt-2 max-w-[80%] line-clamp-2">
-            {data.description}
-          </p>
-        )}
+      <div className="w-full h-full relative z-0">
+        <svg 
+          viewBox="0 0 100 100" 
+          preserveAspectRatio="none" 
+          className="absolute inset-0 w-full h-full"
+        >
+          <g 
+            dangerouslySetInnerHTML={{ __html: svgInner }} 
+            fill={selected ? 'rgba(224, 231, 255, 0.4)' : 'rgba(238, 242, 255, 0.3)'}
+            stroke={selected ? '#818cf8' : '#c7d2fe'}
+            strokeWidth="1.5"
+            strokeDasharray="4 4"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+
+        <Handle type="target" position={Position.Top} className="opacity-0" />
+        
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
+          <h3 className="text-xl font-black text-indigo-900/30 uppercase tracking-widest">
+            {data.semanticLabel || 'Grupo'}
+          </h3>
+          {data.description && (
+            <p className="text-sm font-bold text-indigo-800/40 mt-2 max-w-[80%] line-clamp-2">
+              {data.description}
+            </p>
+          )}
+        </div>
+        
+        <Handle type="source" position={Position.Bottom} className="opacity-0" />
       </div>
-      
-      <Handle type="source" position={Position.Bottom} className="opacity-0" />
-    </div>
+    </>
   );
 };
 

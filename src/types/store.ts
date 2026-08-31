@@ -15,6 +15,7 @@ export interface NodeData {
   };
   biographicalAttributes?: Record<string, string>;
   visualPosition?: { x: number, y: number };
+  visualDimensions?: { width: number, height: number };
   clusterIds?: string[];
 }
 

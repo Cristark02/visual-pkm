@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@reactflow/node-resizer": "^2.2.14",
     "file-saver": "^2.0.5",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
