@@ -98,10 +98,12 @@ const ParallelEdge = ({
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            transform: `translate(-50%, -100%) translate(${labelX}px,${labelY - 8}px)`,
             pointerEvents: 'all',
+            color: taxRule.color,
+            textShadow: '0px 1px 4px rgba(255,255,255,1), 0px -1px 4px rgba(255,255,255,1), 1px 0px 4px rgba(255,255,255,1), -1px 0px 4px rgba(255,255,255,1)'
           }}
-          className="nodrag nopan bg-white/90 backdrop-blur text-[9px] font-bold text-gray-600 px-2 py-0.5 rounded-full border border-gray-100 shadow-sm uppercase tracking-wider"
+          className="nodrag nopan text-[9px] font-black uppercase tracking-widest whitespace-nowrap"
         >
           {semanticType}
         </div>

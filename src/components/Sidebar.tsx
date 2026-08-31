@@ -24,7 +24,7 @@ const LinePreview = ({ id }: { id: string }) => {
 };
 
 export default function Sidebar() {
-  const { selectedEntityId, selectedEntityType, setSelectedEntity, nodes, edges, updateNodeData, updateEdgeData } = useStore();
+  const { selectedEntityId, selectedEntityType, setSelectedEntity, nodes, edges, updateNode, updateNodeData, updateEdgeData } = useStore();
   const [searchTerm, setSearchTerm] = useState("");
 
   const entity = useMemo(() => {
@@ -92,22 +92,25 @@ export default function Sidebar() {
                   className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
                 />
               </div>
-              <select 
-                value={(entity as NodeModel).data.biographicalAttributes?.shape || 'circle'} 
-                onChange={e => {
-                  updateNodeData(entity.id, { biographicalAttributes: { ...(entity as NodeModel).data.biographicalAttributes, shape: e.target.value } });
-                  triggerSave();
-                }} 
-                className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
-              >
-                <option value="circle">Forma: Círculo</option>
-                <option value="square">Forma: Cuadrado</option>
-                <option value="star">Forma: Estrella</option>
-                <option value="heart">Forma: Corazón</option>
-              </select>
               <button onClick={() => alert('Próximamente: Selector de archivos nativo.')} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all cursor-pointer shadow-sm">
                 <Camera size={16} className="text-indigo-500" /> Asignar Foto
               </button>
+
+              <select
+                value={(entity as NodeModel).logicalParentNode || ''}
+                onChange={e => {
+                  updateNode(entity.id, { logicalParentNode: e.target.value || undefined });
+                  triggerSave();
+                }}
+                className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+              >
+                <option value="">Sin Grupo (Raíz)</option>
+                {nodes.filter(n => n.type === 'cluster' && n.id !== entity.id).map(cluster => (
+                  <option key={cluster.id} value={cluster.id}>
+                    Grupo: {cluster.data.semanticLabel || 'Sin nombre'}
+                  </option>
+                ))}
+              </select>
             </>
           )}
           
@@ -120,6 +123,28 @@ export default function Sidebar() {
               placeholder="Nombre del Grupo" 
               className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
             />
+          )}
+
+          {(isIndividual || isCluster) && (
+            <select 
+              value={(entity as NodeModel).data.biographicalAttributes?.shape || 'circle'} 
+              onChange={e => {
+                updateNodeData(entity.id, { biographicalAttributes: { ...(entity as NodeModel).data.biographicalAttributes, shape: e.target.value } });
+                triggerSave();
+              }} 
+              className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+            >
+              <option value="circle">Forma: Círculo/Óvalo</option>
+              <option value="square">Forma: Rectángulo/Cuadrado</option>
+              <option value="star">Forma: Estrella</option>
+              <option value="heart">Forma: Corazón</option>
+              <option value="hexagon">Forma: Hexágono</option>
+              <option value="diamond">Forma: Rombo</option>
+              <option value="triangle">Forma: Triángulo</option>
+              <option value="pentagon">Forma: Pentágono</option>
+              <option value="octagon">Forma: Octágono</option>
+              <option value="shield">Forma: Escudo</option>
+            </select>
           )}
           
           {isEdge && (

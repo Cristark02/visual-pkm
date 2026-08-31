@@ -19,6 +19,7 @@ interface PKMState {
   addEdge: (source: string, target: string) => void;
   
   updateNodeData: (id: string, data: any) => void;
+  updateNode: (id: string, updates: Partial<NodeModel>) => void;
   updateEdgeData: (id: string, data: any) => void;
   
   updateNodeNotes: (id: string, notes: string) => void;
@@ -86,6 +87,10 @@ export const useStore = create<PKMState>((set) => ({
 
   updateNodeData: (id, data) => set((state) => ({
     nodes: state.nodes.map(n => n.id === id ? { ...n, data: { ...n.data, ...data } } : n)
+  })),
+
+  updateNode: (id, updates) => set((state) => ({
+    nodes: state.nodes.map(n => n.id === id ? { ...n, ...updates, data: { ...n.data, ...(updates.data || {}) } } : n)
   })),
 
   updateEdgeData: (id, data) => set((state) => ({

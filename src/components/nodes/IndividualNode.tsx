@@ -63,11 +63,22 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
 
   let shapeClasses = `w-20 h-20 shadow-lg flex items-center justify-center transition-all duration-300 relative z-10 ${selected ? 'ring-4 ring-indigo-500 scale-105' : 'border border-gray-200 hover:shadow-xl hover:scale-105'}`;
   
-  const isStar = computedShape === 'star';
-  const isHeart = computedShape === 'heart';
-  
   if (computedShape === 'circle') shapeClasses += ' rounded-full';
   else if (computedShape === 'square') shapeClasses += ' rounded-2xl';
+
+  // Define custom clip-paths for non-standard shapes
+  const clipPaths: Record<string, string> = {
+    star: 'polygon(50% 0%, 65% 35%, 100% 40%, 75% 65%, 85% 100%, 50% 80%, 15% 100%, 25% 65%, 0% 40%, 35% 35%)',
+    heart: 'polygon(50% 100%, 10% 60%, 0% 30%, 15% 0%, 50% 25%, 85% 0%, 100% 30%, 90% 60%)',
+    hexagon: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+    diamond: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+    triangle: 'polygon(50% 0%, 100% 100%, 0% 100%)',
+    pentagon: 'polygon(50% 0%, 100% 38%, 81% 100%, 19% 100%, 0% 38%)',
+    octagon: 'polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%)',
+    shield: 'polygon(0% 0%, 100% 0%, 100% 75%, 50% 100%, 0% 75%)'
+  };
+
+  const clipPathStyle = clipPaths[computedShape] || 'none';
 
   return (
     <div className="flex flex-col items-center justify-center group cursor-pointer relative" onDoubleClick={handleDoubleClick}>
@@ -92,8 +103,7 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         className={shapeClasses}
         style={{
           backgroundColor: avatarUrl ? 'transparent' : bgColor,
-          clipPath: isStar ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' : 
-                    isHeart ? 'path("M40,20 c-10,-17 -40,-12 -40,10 c0,15 17,31 40,52 c23,-21 40,-37 40,-52 c0,-22 -30,-27 -40,-10 z")' : 'none',
+          clipPath: clipPathStyle
         }}
       >
         {avatarUrl ? (
