@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { X, Camera, Search, Trash2 } from 'lucide-react';
+import { X, Camera, Search, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { saveDocument } from '../lib/fsManager';
 import { DEFAULT_TAXONOMY, getTaxonomyRelation } from '../config/taxonomy';
@@ -26,6 +26,7 @@ const LinePreview = ({ id }: { id: string }) => {
 export default function Sidebar() {
   const { selectedEntityId, selectedEntityType, setSelectedEntity, nodes, edges, updateNodeData, updateEdgeData } = useStore();
   const [searchTerm, setSearchTerm] = useState("");
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
 
   const entity = useMemo(() => {
     if (selectedEntityType === 'node') return nodes.find(n => n.id === selectedEntityId);
@@ -307,18 +308,27 @@ export default function Sidebar() {
           )}
         </div>
 
-        <div className="p-5 flex-1 flex flex-col min-h-[250px]">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Notas (Markdown)</label>
-          <textarea
-            value={isEdge ? ((entity as EdgeModel).data?.contextualNotes || '') : ((entity as NodeModel).data?.historicalNotes || '')}
-            onChange={(e) => {
-              if (isEdge) updateEdgeData(entity.id, { contextualNotes: e.target.value });
-              else updateNodeData(entity.id, { historicalNotes: e.target.value });
-            }}
-            onBlur={triggerSave}
-            className="w-full flex-1 p-4 bg-white border border-gray-200 rounded-xl text-sm font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none shadow-inner transition-all"
-            placeholder="Añade contexto histórico, anécdotas..."
-          />
+        <div className={`p-5 flex flex-col ${isNotesOpen ? 'flex-1 min-h-[250px]' : 'shrink-0'}`}>
+          <button 
+            onClick={() => setIsNotesOpen(!isNotesOpen)}
+            className="flex items-center justify-between w-full text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 hover:text-indigo-600 transition-colors"
+          >
+            <span>Notas (Historial / Contexto)</span>
+            {isNotesOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          
+          {isNotesOpen && (
+            <textarea
+              value={isEdge ? ((entity as EdgeModel).data?.contextualNotes || '') : ((entity as NodeModel).data?.historicalNotes || '')}
+              onChange={(e) => {
+                if (isEdge) updateEdgeData(entity.id, { contextualNotes: e.target.value });
+                else updateNodeData(entity.id, { historicalNotes: e.target.value });
+              }}
+              onBlur={triggerSave}
+              className="w-full flex-1 p-4 bg-white border border-gray-200 rounded-xl text-sm font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none shadow-inner transition-all animate-in fade-in duration-200"
+              placeholder="Añade contexto histórico, anécdotas..."
+            />
+          )}
         </div>
       </div>
 

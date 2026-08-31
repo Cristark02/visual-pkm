@@ -328,9 +328,20 @@ function App() {
                 onClick={() => setMobileSidebarOpen(false)}
               />
               
-              {/* Sidebar Panel */}
-              <div className={`fixed inset-y-0 right-0 w-[85%] max-w-[320px] bg-white shadow-2xl flex flex-col z-50 md:relative md:inset-auto md:w-80 md:max-w-none md:z-40 border-l border-gray-200 transition-transform duration-300 ${mobileSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
-                <Sidebar />
+              {/* Sidebar Panel (Bottom sheet on mobile, right sidebar on desktop) */}
+              <div 
+                className={`fixed inset-x-0 bottom-0 h-[85vh] w-full bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.2)] rounded-t-3xl flex flex-col z-50 md:relative md:inset-auto md:h-full md:w-80 md:max-w-none md:z-40 border-l border-gray-200 md:rounded-none transition-transform duration-300 ${mobileSidebarOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}`}
+              >
+                {/* Drag Handle for Mobile */}
+                <div 
+                  className="md:hidden flex items-center justify-center pt-4 pb-2 shrink-0 cursor-pointer"
+                  onClick={() => setMobileSidebarOpen(false)}
+                >
+                  <div className="w-12 h-1.5 bg-gray-300 hover:bg-gray-400 rounded-full transition-colors" />
+                </div>
+                <div className="flex-1 min-h-0">
+                  <Sidebar />
+                </div>
               </div>
             </>
           )}

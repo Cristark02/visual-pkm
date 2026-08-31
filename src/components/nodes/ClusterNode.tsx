@@ -23,7 +23,6 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   };
 
   const updateNodeData = useStore(state => state.updateNodeData);
-  const setSelectedEntity = useStore(state => state.setSelectedEntity);
   const shape = data.biographicalAttributes?.shape || 'square';
   
   const svgPaths: Record<string, string> = {
@@ -43,11 +42,13 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
 
   return (
     <div 
-      className="w-full h-full relative"
+      className="w-full h-full relative group"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onClick={() => setSelectedEntity(id, 'node')}
     >
+      {/* Capa invisible para atrapar toques en móvil/desktop y permitir arrastre perfecto sin robar foco al SVG */}
+      <div className="absolute inset-0 bg-transparent z-10" />
+
       {/* Botón de Enlace (Lock/Link) - SIEMPRE VISIBLE PERO TRANSLÚCIDO SI NO ESTÁ SELECCIONADO */}
       <button 
         onClick={(e) => { 
@@ -72,15 +73,15 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
           onResizeEnd={(_, params) => {
             updateNodeData(id, { visualDimensions: { width: params.width, height: params.height } });
           }}
-          style={{ background: 'transparent', border: 'none' }}
+          style={{ background: 'transparent', border: 'none', width: '48px', height: '48px' }}
         >
-          <div className="absolute bottom-0 left-0 w-12 h-12 transform translate-y-1/2 -translate-x-1/2 text-indigo-600 bg-white shadow-xl border-2 border-indigo-200 rounded-full flex items-center justify-center hover:bg-indigo-50 active:bg-indigo-100 transition-colors pointer-events-auto cursor-sw-resize z-50 nodrag nopan">
+          <div className="absolute bottom-0 left-0 w-12 h-12 transform translate-y-1/2 -translate-x-1/2 text-indigo-600 bg-white shadow-xl border-2 border-indigo-200 rounded-full flex items-center justify-center hover:bg-indigo-50 active:bg-indigo-100 transition-colors pointer-events-auto cursor-sw-resize z-50">
             <ArrowDownLeft size={24} />
           </div>
         </NodeResizeControl>
       )}
       
-      <div className="w-full h-full relative z-0">
+      <div className="w-full h-full relative z-0 pointer-events-none">
         <svg 
           viewBox="0 0 100 100" 
           preserveAspectRatio="none" 
@@ -90,15 +91,16 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
             dangerouslySetInnerHTML={{ __html: svgInner }} 
             fill={data.color ? `${data.color}${selected ? '40' : '20'}` : (selected ? 'rgba(224, 231, 255, 0.4)' : 'rgba(238, 242, 255, 0.3)')}
             stroke={data.color || (selected ? '#818cf8' : '#c7d2fe')}
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
+            strokeWidth={selected ? 4 : 2}
+            strokeDasharray={data.isChainLinked ? "none" : "8 8"}
             vectorEffect="non-scaling-stroke"
+            className="transition-all duration-300"
           />
         </svg>
 
         <Handle type="target" position={Position.Top} className="opacity-0" />
         
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none z-20">
           <h3 
             className="text-xl font-black uppercase tracking-widest transition-colors"
             style={{ color: data.color || '#312e81', opacity: data.color ? 0.6 : 0.3 }}
