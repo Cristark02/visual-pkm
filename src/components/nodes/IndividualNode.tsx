@@ -61,7 +61,7 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
     if (e.key === 'Escape') setIsEditing(false);
   };
 
-  let shapeClasses = `w-20 h-20 shadow-lg overflow-hidden flex items-center justify-center transition-all duration-300 ${selected ? 'ring-4 ring-blue-500 scale-105' : 'border border-gray-200 hover:shadow-xl hover:scale-105'}`;
+  let shapeClasses = `w-20 h-20 shadow-lg flex items-center justify-center transition-all duration-300 relative z-10 ${selected ? 'ring-4 ring-indigo-500 scale-105' : 'border border-gray-200 hover:shadow-xl hover:scale-105'}`;
   
   const isStar = computedShape === 'star';
   const isHeart = computedShape === 'heart';
@@ -71,17 +71,23 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
 
   return (
     <div className="flex flex-col items-center justify-center group cursor-pointer relative" onDoubleClick={handleDoubleClick}>
+      {/* Central handles - Small enough to allow dragging the rest of the node */}
       <Handle 
         type="source" 
         position={Position.Top} 
-        style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '80px', height: '80px', opacity: 0, zIndex: 10, cursor: 'crosshair' }} 
+        style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '28px', height: '28px', opacity: 0, zIndex: 30, cursor: 'crosshair' }} 
       />
       <Handle 
         type="target" 
         position={Position.Top} 
-        style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '80px', height: '80px', opacity: 0, zIndex: 9 }} 
+        style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '28px', height: '28px', opacity: 0, zIndex: 29 }} 
       />
       
+      {/* Visual crosshair hint on hover in the center */}
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+        <span className="text-[10px] font-bold">+</span>
+      </div>
+
       <div 
         className={shapeClasses}
         style={{
@@ -91,13 +97,13 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         }}
       >
         {avatarUrl ? (
-          <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+          <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover pointer-events-none" />
         ) : (
-          <span className="text-xl font-bold text-white/90 drop-shadow-md select-none">{getInitials(givenName, familyName)}</span>
+          <span className="text-xl font-bold text-white/90 drop-shadow-md select-none pointer-events-none">{getInitials(givenName, familyName)}</span>
         )}
       </div>
 
-      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-gray-700 shadow-sm border border-gray-100 z-20">
+      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-gray-700 shadow-sm border border-gray-100 z-30">
         {isEditing ? (
           <input 
             ref={inputRef}
@@ -105,7 +111,7 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
             onChange={e => setEditName(e.target.value)}
             onBlur={saveName}
             onKeyDown={onKeyDown}
-            className="bg-transparent outline-none w-20 text-center text-blue-600 font-bold"
+            className="bg-transparent outline-none w-20 text-center text-indigo-600 font-bold"
           />
         ) : (
           fullName || 'Desconocido'
