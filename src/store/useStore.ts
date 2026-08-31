@@ -14,6 +14,13 @@ interface PKMState {
   loadDocument: (doc: VisualPkmDocument) => void;
   clearDocument: () => void;
   setSelectedEntity: (id: string | null, type: 'node' | 'edge' | null) => void;
+  
+  addNode: (type: 'individual' | 'cluster') => void;
+  addEdge: (source: string, target: string) => void;
+  
+  updateNodeData: (id: string, data: any) => void;
+  updateEdgeData: (id: string, data: any) => void;
+  
   updateNodeNotes: (id: string, notes: string) => void;
   updateEdgeNotes: (id: string, notes: string) => void;
 }
@@ -47,6 +54,38 @@ export const useStore = create<PKMState>((set) => ({
     selectedEntityId: id,
     selectedEntityType: type,
   }),
+
+  addNode: (type) => set((state) => {
+    const id = `node-${crypto.randomUUID()}`;
+    const newNode: NodeModel = {
+      id,
+      type,
+      data: type === 'individual' 
+        ? { identity: { givenName: 'Nueva', familyName: 'Persona' }, biographicalAttributes: { shape: 'circle' }, historicalNotes: '' }
+        : { semanticLabel: 'Nuevo Grupo', historicalNotes: '' }
+    };
+    return { nodes: [...state.nodes, newNode], selectedEntityId: id, selectedEntityType: 'node' };
+  }),
+
+  addEdge: (source, target) => set((state) => {
+    const id = `edge-${crypto.randomUUID()}`;
+    const newEdge: EdgeModel = {
+      id,
+      sourceNodeId: source,
+      targetNodeId: target,
+      semanticRelationshipType: 'Conocido',
+      data: { contextualNotes: '' }
+    };
+    return { edges: [...state.edges, newEdge], selectedEntityId: id, selectedEntityType: 'edge' };
+  }),
+
+  updateNodeData: (id, data) => set((state) => ({
+    nodes: state.nodes.map(n => n.id === id ? { ...n, data: { ...n.data, ...data } } : n)
+  })),
+
+  updateEdgeData: (id, data) => set((state) => ({
+    edges: state.edges.map(e => e.id === id ? { ...e, ...data } : e)
+  })),
   
   updateNodeNotes: (id, notes) => set((state) => ({
     nodes: state.nodes.map(n => 

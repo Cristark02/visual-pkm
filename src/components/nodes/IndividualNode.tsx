@@ -4,12 +4,6 @@ import type { NodeProps } from 'reactflow';
 import { resolveLocalMedia } from '../../lib/mediaResolver';
 import type { NodeData } from '../../types/store';
 
-type ComputedShape = 'circle' | 'square' | 'star' | 'heart';
-
-type IndividualNodeData = NodeData & {
-  computedShape: ComputedShape;
-};
-
 const getInitials = (given?: string, family?: string) => {
   const g = given ? given.charAt(0) : '';
   const f = family ? family.charAt(0) : '';
@@ -29,8 +23,9 @@ const intToRGB = (i: number) => {
   return '#' + '00000'.substring(0, 6 - c.length) + c;
 };
 
-const IndividualNode = ({ data }: NodeProps<IndividualNodeData>) => {
-  const { identity, mediaReferences, computedShape = 'circle' } = data;
+const IndividualNode = ({ data }: NodeProps<NodeData>) => {
+  const { identity, mediaReferences } = data;
+  const computedShape = data.biographicalAttributes?.shape || 'circle';
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,11 +50,10 @@ const IndividualNode = ({ data }: NodeProps<IndividualNodeData>) => {
   
   if (computedShape === 'circle') shapeClasses += ' rounded-full';
   else if (computedShape === 'square') shapeClasses += ' rounded-xl';
-  // Star and heart we'll handle with clip-path inline or custom SVGs if image is not present
 
   return (
     <div className="flex flex-col items-center justify-center group cursor-pointer">
-      <Handle type="target" position={Position.Top} className="opacity-0" />
+      <Handle type="target" position={Position.Top} className="opacity-0 group-hover:opacity-100 transition-opacity" />
       
       <div 
         className={shapeClasses}
@@ -67,7 +61,6 @@ const IndividualNode = ({ data }: NodeProps<IndividualNodeData>) => {
           backgroundColor: avatarUrl ? 'transparent' : bgColor,
           clipPath: isStar ? 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' : 
                     isHeart ? 'path("M32,12 c-8,-14 -32,-10 -32,8 c0,12 14,25 32,42 c18,-17 32,-30 32,-42 c0,-18 -24,-22 -32,-8 z")' : 'none',
-          // Heart path scaled for ~64px box
         }}
       >
         {avatarUrl ? (
@@ -81,7 +74,7 @@ const IndividualNode = ({ data }: NodeProps<IndividualNodeData>) => {
         {fullName || 'Desconocido'}
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="opacity-0" />
+      <Handle type="source" position={Position.Bottom} className="opacity-0 group-hover:opacity-100 transition-opacity" />
     </div>
   );
 };

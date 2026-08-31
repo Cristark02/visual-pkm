@@ -124,7 +124,7 @@ export default function GraphCanvas() {
     setEdges(rfEdges);
   }, [storeNodes, storeEdges, setNodes, setEdges]);
 
-  const { setSelectedEntity } = useStore();
+  const { setSelectedEntity, addEdge } = useStore();
 
   const onNodeClick = (_: React.MouseEvent, node: RFNode) => {
     setSelectedEntity(node.id, 'node');
@@ -136,6 +136,12 @@ export default function GraphCanvas() {
 
   const onPaneClick = () => {
     setSelectedEntity(null, null);
+  };
+  
+  const onConnect = (params: any) => {
+    if (params.source && params.target) {
+      addEdge(params.source, params.target);
+    }
   };
 
   return (
@@ -150,6 +156,7 @@ export default function GraphCanvas() {
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
+        onConnect={onConnect}
         connectionMode={ConnectionMode.Loose}
         fitView
       >

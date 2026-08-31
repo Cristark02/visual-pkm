@@ -6,6 +6,7 @@ import type { VisualPkmDocument } from './types/store';
 
 import GraphCanvas from './components/GraphCanvas';
 import Sidebar from './components/Sidebar';
+import Toolbar from './components/Toolbar';
 import { exportToVectorPDF } from './lib/pdfExporter';
 
 function App() {
@@ -213,6 +214,7 @@ function App() {
       <main className="flex-1 relative flex">
         <div className="flex-1 relative">
           <GraphCanvas />
+          <Toolbar />
         </div>
         {selectedEntityId && (
           <Sidebar />
