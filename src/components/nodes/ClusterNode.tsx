@@ -46,7 +46,7 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
       className="w-full h-full relative"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onPointerDown={() => setSelectedEntity(id, 'node')}
+      onClick={() => setSelectedEntity(id, 'node')}
     >
       {/* Botón de Enlace (Lock/Link) - SIEMPRE VISIBLE PERO TRANSLÚCIDO SI NO ESTÁ SELECCIONADO */}
       <button 

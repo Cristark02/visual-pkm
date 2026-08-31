@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useStore } from './store/useStore';
 import { openDocument, currentFileHandle, parseDocument } from './lib/fsManager';
-import { FileJson, AlertCircle, Download, Plus, Info, ExternalLink, UploadCloud } from 'lucide-react';
+import { FileJson, AlertCircle, Download, Plus, Info, ExternalLink, UploadCloud, X } from 'lucide-react';
 import type { VisualPkmDocument } from './types/store';
 
 import GraphCanvas from './components/GraphCanvas';
@@ -10,7 +10,7 @@ import Toolbar from './components/Toolbar';
 import { exportToVectorPDF } from './lib/pdfExporter';
 
 function App() {
-  const { metadata, nodes, loadDocument, clearDocument, selectedEntityId } = useStore();
+  const { metadata, nodes, loadDocument, clearDocument, selectedEntityId, selectedEntityType } = useStore();
   const [error, setError] = useState<string | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
@@ -27,6 +27,13 @@ function App() {
   };
 
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    // Cuando cambia la selección, por defecto escondemos el sidebar completo en móvil
+    // para dejar que el usuario manipule el nodo (resize, drag) libremente.
+    setMobileSidebarOpen(false);
+  }, [selectedEntityId]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -284,13 +291,45 @@ function App() {
           
           {selectedEntityId && (
             <>
-              {/* Mobile Backdrop */}
+              {/* Mobile Peek Bar (Always visible on mobile when an entity is selected, unless sidebar is open) */}
+              {!mobileSidebarOpen && (
+                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] z-40 px-4 py-3 flex items-center justify-between animate-in slide-in-from-bottom-full duration-300">
+                  <div className="flex flex-col truncate pr-4">
+                    <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">
+                      {selectedEntityType === 'edge' ? 'Vínculo' : (nodes.find(n => n.id === selectedEntityId)?.type === 'cluster' ? 'Grupo' : 'Persona')}
+                    </span>
+                    <span className="font-bold text-gray-800 text-sm truncate">
+                      {selectedEntityType === 'edge' ? 'Editar Relación' : (
+                        (() => {
+                          const n = nodes.find(x => x.id === selectedEntityId);
+                          if (!n) return '';
+                          return n.type === 'cluster' ? (n.data.semanticLabel || 'Grupo') : (n.data.identity?.alias || n.data.identity?.givenName || 'Persona');
+                        })()
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button 
+                      onClick={() => setMobileSidebarOpen(true)} 
+                      className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-indigo-700"
+                    >
+                      Propiedades
+                    </button>
+                    <button onClick={() => useStore.getState().setSelectedEntity(null, null)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full">
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Mobile Backdrop for Full Sidebar */}
               <div 
-                className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
-                onClick={() => useStore.getState().setSelectedEntity(null, null)}
+                className={`fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 md:hidden transition-opacity duration-300 ${mobileSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                onClick={() => setMobileSidebarOpen(false)}
               />
+              
               {/* Sidebar Panel */}
-              <div className="fixed inset-y-0 right-0 w-[85%] max-w-[320px] bg-white shadow-2xl flex flex-col z-50 md:relative md:inset-auto md:w-80 md:max-w-none md:z-40 border-l border-gray-200 animate-in slide-in-from-right duration-300">
+              <div className={`fixed inset-y-0 right-0 w-[85%] max-w-[320px] bg-white shadow-2xl flex flex-col z-50 md:relative md:inset-auto md:w-80 md:max-w-none md:z-40 border-l border-gray-200 transition-transform duration-300 ${mobileSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
                 <Sidebar />
               </div>
             </>
