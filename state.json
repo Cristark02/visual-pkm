@@ -1,0 +1,80 @@
+{
+  "documentVersion": "1.0.0",
+  "metadata": {
+    "creationTimestamp": "2026-08-30T10:00:00Z",
+    "lastModifiedTimestamp": "2026-08-30T14:30:00Z",
+    "vaultOwner": "Usuario Principal",
+    "encryptionStatus": "unencrypted"
+  },
+  "nodes": [
+    {
+      "id": "e3b0c442-989b-464c-8691-032902f5a6f2",
+      "type": "cluster",
+      "data": {
+        "semanticLabel": "Familia Materna",
+        "description": "Contenedor macroscópico que agrupa a todos los descendientes biológicos directos de la Abuela Carmen, abarcando tres generaciones activas."
+      }
+    },
+    {
+      "id": "1d8a9f6e-55c3-4d2a-a924-a78b46b2db3c",
+      "type": "individual",
+      "logicalParentNode": "e3b0c442-989b-464c-8691-032902f5a6f2",
+      "data": {
+        "identity": {
+          "givenName": "Lucía",
+          "familyName": "García"
+        },
+        "mediaReferences": {
+          "primaryAvatarPath": "media/lucia_perfil_2024.jpg"
+        },
+        "biographicalAttributes": {
+          "dateOfBirth": "1990-05-15",
+          "currentLocation": "Madrid"
+        },
+        "historicalNotes": "### Registro General\nConocí a Lucía en el primer ciclo de la facultad de ciencias exactas."
+      }
+    },
+    {
+      "id": "76fa9c81-8b3d-4950-9fc6-18bd24ea10ab",
+      "type": "individual",
+      "data": {
+        "identity": {
+          "givenName": "Usuario Principal (Yo)",
+          "familyName": ""
+        },
+        "mediaReferences": {
+          "primaryAvatarPath": "media/retrato_personal_maestro.webp"
+        },
+        "historicalNotes": "Nodo central de anclaje del grafo relacional."
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "b73a21bc-62a1-419b-ab85-19e075e81d7f",
+      "sourceNodeId": "76fa9c81-8b3d-4950-9fc6-18bd24ea10ab",
+      "targetNodeId": "1d8a9f6e-55c3-4d2a-a924-a78b46b2db3c",
+      "semanticRelationshipType": "ex-partner",
+      "data": {
+        "temporalBounds": {
+          "startDate": "2010-09-01",
+          "endDate": "2014-02-14"
+        },
+        "contextualNotes": "El periodo universitario estuvo altamente cohesionado por este vínculo."
+      }
+    },
+    {
+      "id": "da14c2b8-936e-4f01-b51c-8e4a9e2db38f",
+      "sourceNodeId": "76fa9c81-8b3d-4950-9fc6-18bd24ea10ab",
+      "targetNodeId": "1d8a9f6e-55c3-4d2a-a924-a78b46b2db3c",
+      "semanticRelationshipType": "best-friend",
+      "data": {
+        "temporalBounds": {
+          "startDate": "2014-06-01",
+          "endDate": null
+        },
+        "contextualNotes": "Restauración de los canales de comunicación y establecimiento de confianza absoluta libre de expectativas románticas."
+      }
+    }
+  ]
+}
