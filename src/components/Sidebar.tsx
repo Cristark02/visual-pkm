@@ -24,7 +24,7 @@ const LinePreview = ({ id }: { id: string }) => {
 };
 
 export default function Sidebar() {
-  const { selectedEntityId, selectedEntityType, setSelectedEntity, nodes, edges, updateNode, updateNodeData, updateEdgeData } = useStore();
+  const { selectedEntityId, selectedEntityType, setSelectedEntity, nodes, edges, updateNodeData, updateEdgeData } = useStore();
   const [searchTerm, setSearchTerm] = useState("");
 
   const entity = useMemo(() => {
@@ -58,7 +58,7 @@ export default function Sidebar() {
   const isEdge = selectedEntityType === 'edge';
 
   return (
-    <div className="absolute top-4 right-4 bottom-4 w-96 bg-white/90 backdrop-blur-xl shadow-2xl rounded-2xl border border-gray-100 flex flex-col z-50 transform transition-all duration-300">
+    <div className="absolute top-4 right-4 bottom-4 w-[calc(100%-2rem)] sm:w-96 bg-white/90 backdrop-blur-xl shadow-2xl rounded-2xl border border-gray-100 flex flex-col z-50 transform transition-all duration-300">
       <div className="flex items-center justify-between p-5 border-b border-gray-100/50 bg-transparent shrink-0">
         <h2 className="font-bold text-gray-800 text-lg truncate pr-2">
           {isNode 
@@ -95,22 +95,6 @@ export default function Sidebar() {
               <button onClick={() => alert('Próximamente: Selector de archivos nativo.')} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all cursor-pointer shadow-sm">
                 <Camera size={16} className="text-indigo-500" /> Asignar Foto
               </button>
-
-              <select
-                value={(entity as NodeModel).logicalParentNode || ''}
-                onChange={e => {
-                  updateNode(entity.id, { logicalParentNode: e.target.value || undefined });
-                  triggerSave();
-                }}
-                className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
-              >
-                <option value="">Sin Grupo (Raíz)</option>
-                {nodes.filter(n => n.type === 'cluster' && n.id !== entity.id).map(cluster => (
-                  <option key={cluster.id} value={cluster.id}>
-                    Grupo: {cluster.data.semanticLabel || 'Sin nombre'}
-                  </option>
-                ))}
-              </select>
             </>
           )}
           
@@ -145,6 +129,23 @@ export default function Sidebar() {
               <option value="octagon">Forma: Octágono</option>
               <option value="shield">Forma: Escudo</option>
             </select>
+          )}
+
+          {isIndividual && (entity as NodeModel).data.clusterIds && (entity as NodeModel).data.clusterIds!.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pertenece a:</span>
+              <div className="flex flex-wrap gap-1">
+                {(entity as NodeModel).data.clusterIds!.map(cId => {
+                  const c = nodes.find(n => n.id === cId);
+                  if (!c) return null;
+                  return (
+                    <span key={cId} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                      {c.data.semanticLabel || 'Grupo'}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
           )}
           
           {isEdge && (

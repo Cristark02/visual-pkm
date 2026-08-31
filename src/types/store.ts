@@ -15,12 +15,12 @@ export interface NodeData {
   };
   biographicalAttributes?: Record<string, string>;
   visualPosition?: { x: number, y: number };
+  clusterIds?: string[];
 }
 
 export interface NodeModel {
   id: string;
   type: NodeType;
-  logicalParentNode?: string;
   data: NodeData;
 }
 

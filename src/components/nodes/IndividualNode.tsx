@@ -82,21 +82,21 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
 
   return (
     <div className="flex flex-col items-center justify-center group cursor-pointer relative" onDoubleClick={handleDoubleClick}>
-      {/* Central handles - Small enough to allow dragging the rest of the node */}
+      {/* Central handles - Larger for fat fingers on mobile */}
       <Handle 
         type="source" 
         position={Position.Top} 
-        style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '28px', height: '28px', opacity: 0, zIndex: 30, cursor: 'crosshair' }} 
+        style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '36px', height: '36px', opacity: 0, zIndex: 30, cursor: 'crosshair' }} 
       />
       <Handle 
         type="target" 
         position={Position.Top} 
-        style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '28px', height: '28px', opacity: 0, zIndex: 29 }} 
+        style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '36px', height: '36px', opacity: 0, zIndex: 29 }} 
       />
       
-      {/* Visual crosshair hint on hover in the center */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
-        <span className="text-[10px] font-bold">+</span>
+      {/* Visual crosshair hint on hover in the center. Always slightly visible on mobile, fully visible on hover for desktop */}
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center opacity-30 sm:opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+        <span className="text-[12px] font-bold">+</span>
       </div>
 
       <div 
