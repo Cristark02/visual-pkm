@@ -116,14 +116,19 @@ export async function openWorkspace(): Promise<{ doc: VisualPkmDocument, dirHand
     throw new Error('File System Access API no está soportado en este navegador. Usa la importación de archivos estándar.');
   }
 
-  const dirHandle = await (window as any).showDirectoryPicker();
-  
   try {
+    const dirHandle = await (window as any).showDirectoryPicker();
+    currentDirHandle = dirHandle;
+    
     const fileHandle = await dirHandle.getFileHandle('state.json', { create: false });
+    currentFileHandle = fileHandle;
     const file = await fileHandle.getFile();
     const text = await file.text();
     return { doc: parseDocument(text), dirHandle };
-  } catch (error) {
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error('Cancelado');
+    }
     throw new Error('No se encontró el archivo state.json en el directorio seleccionado.');
   }
 }
