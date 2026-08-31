@@ -79,6 +79,25 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   };
 
   const clipPathStyle = clipPaths[computedShape] || 'none';
+  const borderRadiusStyle = computedShape === 'circle' ? '9999px' : computedShape === 'square' ? '1rem' : undefined;
+
+  const nodeColor = data.color;
+  const borderColor = nodeColor || (selected ? '#818cf8' : '#e5e7eb');
+  const textColor = nodeColor || '#374151';
+  const gapClass = (selected || nodeColor) ? 'm-[4px]' : 'm-[2px]';
+
+  const gender = data.biographicalAttributes?.gender;
+  const getGenderIcon = (g?: string) => {
+    switch(g) {
+      case 'Mujer': return '♀';
+      case 'Hombre': return '♂';
+      case 'No binario': return '⚧';
+      case 'Fluido': return '〰';
+      case 'Otro': return '✦';
+      default: return null;
+    }
+  }
+  const genderIcon = getGenderIcon(gender);
 
   return (
     <div className="flex flex-col items-center justify-center group cursor-pointer relative" onDoubleClick={handleDoubleClick}>
@@ -94,26 +113,45 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '36px', height: '36px', opacity: 0, zIndex: 29 }} 
       />
       
-      {/* Visual crosshair hint on hover in the center. Always slightly visible on mobile, fully visible on hover for desktop */}
+      {/* Visual crosshair hint on hover in the center */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center opacity-30 sm:opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
         <span className="text-[12px] font-bold">+</span>
       </div>
 
-      <div 
-        className={shapeClasses}
-        style={{
-          backgroundColor: avatarUrl ? 'transparent' : bgColor,
-          clipPath: clipPathStyle
-        }}
-      >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover pointer-events-none" />
-        ) : (
-          <span className="text-xl font-bold text-white/90 drop-shadow-md select-none pointer-events-none">{getInitials(givenName, familyName)}</span>
-        )}
+      <div className={`w-20 h-20 flex items-center justify-center transition-all duration-300 relative z-10 ${selected ? 'scale-110 shadow-xl' : 'hover:scale-105 hover:shadow-lg'}`}>
+        {/* Outer Wrapper for the Colored Border */}
+        <div 
+          className="absolute inset-0 w-full h-full drop-shadow-sm"
+          style={{
+            backgroundColor: borderColor,
+            clipPath: clipPathStyle !== 'none' ? clipPathStyle : undefined,
+            borderRadius: borderRadiusStyle,
+            transition: 'background-color 0.3s ease'
+          }}
+        />
+        {/* Inner Wrapper for the Image/Initials */}
+        <div 
+          className={`absolute inset-0 overflow-hidden ${gapClass} transition-all duration-300`}
+          style={{
+            backgroundColor: avatarUrl ? 'white' : bgColor,
+            clipPath: clipPathStyle !== 'none' ? clipPathStyle : undefined,
+            borderRadius: borderRadiusStyle ? `calc(${borderRadiusStyle} - 4px)` : undefined
+          }}
+        >
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover pointer-events-none" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="text-xl font-bold text-white/90 drop-shadow-md select-none pointer-events-none">{getInitials(givenName, familyName)}</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-gray-700 shadow-sm border border-gray-100 z-30">
+      <div 
+        className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white/95 backdrop-blur px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-gray-100 z-30 flex items-center gap-1 transition-colors duration-300"
+        style={{ color: textColor }}
+      >
         {isEditing ? (
           <input 
             ref={inputRef}
@@ -121,11 +159,13 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
             onChange={e => setEditName(e.target.value)}
             onBlur={saveName}
             onKeyDown={onKeyDown}
-            className="bg-transparent outline-none w-20 text-center text-indigo-600 font-bold"
+            className="bg-transparent outline-none w-20 text-center font-bold"
+            style={{ color: textColor }}
           />
         ) : (
-          fullName || 'Desconocido'
+          <span>{fullName || 'Desconocido'}</span>
         )}
+        {genderIcon && !isEditing && <span className="opacity-70 text-[10px] ml-0.5">{genderIcon}</span>}
       </div>
     </div>
   );

@@ -131,6 +131,67 @@ export default function Sidebar() {
             </select>
           )}
 
+          {isIndividual && (
+            <select 
+              value={(entity as NodeModel).data.biographicalAttributes?.gender || ''} 
+              onChange={e => {
+                updateNodeData(entity.id, { biographicalAttributes: { ...(entity as NodeModel).data.biographicalAttributes, gender: e.target.value } });
+                triggerSave();
+              }} 
+              className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+            >
+              <option value="">Género: No especificado</option>
+              <option value="Mujer">Mujer</option>
+              <option value="Hombre">Hombre</option>
+              <option value="No binario">No binario</option>
+              <option value="Fluido">Fluido</option>
+              <option value="Otro">Otro</option>
+              <option value="Prefiero no decirlo">Prefiero no decirlo</option>
+            </select>
+          )}
+
+          {(isIndividual || isCluster) && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Color de Destaque</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  '#818cf8', // Indigo
+                  '#fb7185', // Rose
+                  '#34d399', // Emerald
+                  '#fbbf24', // Amber
+                  '#38bdf8', // Sky
+                  '#a78bfa', // Violet
+                  '#f472b6', // Pink
+                  '#94a3b8', // Slate
+                ].map(color => (
+                  <button
+                    key={color}
+                    onClick={() => {
+                      updateNodeData(entity.id, { color });
+                      triggerSave();
+                    }}
+                    className={`w-6 h-6 rounded-full border-2 transition-transform ${
+                      (entity as NodeModel).data.color === color ? 'border-gray-900 scale-125' : 'border-transparent hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+                <button
+                  onClick={() => {
+                    updateNodeData(entity.id, { color: undefined });
+                    triggerSave();
+                  }}
+                  className={`w-6 h-6 rounded-full border-2 border-gray-200 flex items-center justify-center transition-transform hover:scale-110 ${
+                    !(entity as NodeModel).data.color ? 'border-gray-900 scale-125' : 'bg-white'
+                  }`}
+                  title="Sin color"
+                >
+                  <X size={12} className="text-gray-400" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {isIndividual && (entity as NodeModel).data.clusterIds && (entity as NodeModel).data.clusterIds!.length > 0 && (
             <div className="flex flex-col gap-2">
               <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pertenece a:</span>

@@ -73,8 +73,8 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         >
           <g 
             dangerouslySetInnerHTML={{ __html: svgInner }} 
-            fill={selected ? 'rgba(224, 231, 255, 0.4)' : 'rgba(238, 242, 255, 0.3)'}
-            stroke={selected ? '#818cf8' : '#c7d2fe'}
+            fill={data.color ? `${data.color}${selected ? '40' : '20'}` : (selected ? 'rgba(224, 231, 255, 0.4)' : 'rgba(238, 242, 255, 0.3)')}
+            stroke={data.color || (selected ? '#818cf8' : '#c7d2fe')}
             strokeWidth="1.5"
             strokeDasharray="4 4"
             vectorEffect="non-scaling-stroke"
@@ -84,11 +84,17 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         <Handle type="target" position={Position.Top} className="opacity-0" />
         
         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
-          <h3 className="text-xl font-black text-indigo-900/30 uppercase tracking-widest">
+          <h3 
+            className="text-xl font-black uppercase tracking-widest transition-colors"
+            style={{ color: data.color || '#312e81', opacity: data.color ? 0.6 : 0.3 }}
+          >
             {data.semanticLabel || 'Grupo'}
           </h3>
           {data.description && (
-            <p className="text-sm font-bold text-indigo-800/40 mt-2 max-w-[80%] line-clamp-2">
+            <p 
+              className="text-sm font-bold mt-2 max-w-[80%] line-clamp-2 transition-colors"
+              style={{ color: data.color || '#3730a3', opacity: data.color ? 0.7 : 0.4 }}
+            >
               {data.description}
             </p>
           )}

@@ -13,11 +13,15 @@ export interface NodeData {
   mediaReferences?: {
     primaryAvatarPath?: string;
   };
-  biographicalAttributes?: Record<string, string>;
+  biographicalAttributes?: {
+    gender?: string;
+    [key: string]: string | undefined;
+  };
   visualPosition?: { x: number, y: number };
   visualDimensions?: { width: number, height: number };
   clusterIds?: string[];
   isChainLinked?: boolean;
+  color?: string;
 }
 
 export interface NodeModel {
