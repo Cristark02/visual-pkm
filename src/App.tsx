@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useStore } from './store/useStore';
-import { openDocument, openWorkspace, currentFileHandle, parseDocument } from './lib/fsManager';
-import { FolderOpen, FileJson, AlertCircle, Download, Plus, Info, ExternalLink } from 'lucide-react';
+import { openDocument, currentFileHandle, parseDocument } from './lib/fsManager';
+import { FileJson, AlertCircle, Download, Plus, Info, ExternalLink, UploadCloud } from 'lucide-react';
 import type { VisualPkmDocument } from './types/store';
 
 import GraphCanvas from './components/GraphCanvas';
@@ -13,18 +13,6 @@ function App() {
   const { metadata, nodes, loadDocument, clearDocument, selectedEntityId } = useStore();
   const [error, setError] = useState<string | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
-
-  const handleOpenWorkspace = async () => {
-    try {
-      setError(null);
-      const { doc } = await openWorkspace();
-      loadDocument(doc);
-    } catch (err: any) {
-      if (err.message !== 'Cancelado') {
-        setError(err.message);
-      }
-    }
-  };
 
   const handleOpenFile = async () => {
     try {
@@ -98,17 +86,39 @@ function App() {
           
           <div className="space-y-4 text-left">
             
-            {/* Opción 1: Carpeta (Recomendada) */}
+            {/* Opción 1: Subir ZIP */}
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-              <button
-                onClick={handleOpenWorkspace}
-                className="w-full flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg transition-colors font-semibold cursor-pointer shadow-sm"
-              >
-                <FolderOpen size={20} />
-                Abrir Directorio (Recomendado)
-              </button>
-              <p className="text-xs text-blue-700 mt-2 px-1">
-                Abre una carpeta de tu PC que contenga el archivo <strong>state.json</strong> y tus fotos. Permite <strong>autoguardado</strong> silencioso e imágenes locales.
+              <label className="w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg transition-colors font-semibold cursor-pointer shadow-sm">
+                <UploadCloud size={20} />
+                Subir Social-Link (.zip)
+                <input 
+                  type="file" 
+                  accept=".zip" 
+                  className="hidden" 
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const JSZip = (await import('jszip')).default;
+                      const zip = new JSZip();
+                      const loadedZip = await zip.loadAsync(file);
+                      let stateFile = loadedZip.file('state.json') || loadedZip.file('config/state.json');
+                      if (stateFile) {
+                        const stateText = await stateFile.async('string');
+                        const stateData = JSON.parse(stateText);
+                        loadDocument(stateData);
+                      } else {
+                        setError("El archivo ZIP no contiene un Social-Link válido (falta state.json)");
+                      }
+                    } catch (err) {
+                      console.error(err);
+                      setError("Error al leer el archivo ZIP");
+                    }
+                  }} 
+                />
+              </label>
+              <p className="text-xs text-blue-700 mt-2 px-1 text-center">
+                Carga tu copia de seguridad generada previamente para continuar editando.
               </p>
             </div>
             
@@ -116,13 +126,13 @@ function App() {
             <div className="bg-green-50 border border-green-100 rounded-lg p-4">
               <button
                 onClick={handleCreateNew}
-                className="w-full flex items-center gap-3 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg transition-colors font-semibold cursor-pointer shadow-sm"
+                className="w-full flex items-center justify-center gap-3 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg transition-colors font-semibold cursor-pointer shadow-sm"
               >
                 <Plus size={20} />
                 Crear Nuevo Mapa
               </button>
-              <p className="text-xs text-green-700 mt-2 px-1">
-                Inicia un lienzo en blanco desde cero. Tendrás que exportar tu progreso descargando el JSON al finalizar.
+              <p className="text-xs text-green-700 mt-2 px-1 text-center">
+                Inicia un lienzo en blanco desde cero. Tendrás que exportar tu progreso descargando el ZIP al finalizar.
               </p>
             </div>
 
@@ -136,14 +146,11 @@ function App() {
             <div>
               <button
                 onClick={handleOpenFile}
-                className="w-full flex items-center gap-3 bg-white hover:bg-gray-50 text-gray-700 py-3 px-4 rounded-lg transition-colors font-semibold border border-gray-300 cursor-pointer shadow-sm"
+                className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-700 py-3 px-4 rounded-lg transition-colors font-semibold border border-gray-300 cursor-pointer shadow-sm"
               >
                 <FileJson size={20} />
-                Solo Importar JSON (Móvil)
+                Solo Importar JSON (Móvil/Legado)
               </button>
-              <p className="text-xs text-gray-500 mt-2 px-1 text-center">
-                Ideal para Android o lectura rápida. Carga un único archivo JSON estático (no hay autoguardado, requiere descarga manual).
-              </p>
             </div>
           </div>
 
@@ -200,7 +207,14 @@ function App() {
     configFolder?.file("taxonomy.json", JSON.stringify(DEFAULT_TAXONOMY, null, 2));
 
     const content = await zip.generateAsync({ type: "blob" });
-    saveAs(content, "social-link-backup.zip");
+    
+    // Generar nombre de archivo
+    const principalName = state.nodes.length > 0 ? (state.nodes[0].data.semanticLabel || 'Vacio') : 'Vacio';
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
+    
+    saveAs(content, `Social-Link de ${principalName} ${dateStr}.zip`);
   };
 
   return (

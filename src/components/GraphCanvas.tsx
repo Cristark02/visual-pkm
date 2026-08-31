@@ -301,8 +301,8 @@ export default function GraphCanvas() {
 
     // Guardar posiciones de todos los que se hayan movido
     if (dragContext.current.active) {
-      const movedIds = new Set([...dragContext.current.clusterIds, ...dragContext.current.memberIds, node.id]);
-      movedIds.forEach(id => {
+      const movedIds = new Set<string>([...dragContext.current.clusterIds, ...dragContext.current.memberIds, node.id]);
+      movedIds.forEach((id: string) => {
         const n = currentNodes.find(x => x.id === id);
         if (n) updateNodeData(id, { visualPosition: n.position });
       });
@@ -321,7 +321,7 @@ export default function GraphCanvas() {
         
         // Solo actualizar si hay un cambio real para evitar renders infinitos
         const oldIds = n.data.clusterIds || [];
-        if (oldIds.length !== overlappingClusters.length || !oldIds.every(id => overlappingClusters.includes(id))) {
+        if (oldIds.length !== overlappingClusters.length || !oldIds.every((id: string) => overlappingClusters.includes(id))) {
           updateNodeData(n.id, { clusterIds: overlappingClusters });
         }
       }
