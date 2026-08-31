@@ -26,6 +26,20 @@ function App() {
     }
   };
 
+  const [showCloseModal, setShowCloseModal] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (nodes.length > 0) {
+        e.preventDefault();
+        e.returnValue = ''; 
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [nodes.length]);
+
   const handleCreateNew = () => {
     setError(null);
     const newDoc: VisualPkmDocument = {
@@ -42,10 +56,13 @@ function App() {
     loadDocument(newDoc);
   };
 
-  const handleClose = () => {
-    if (window.confirm("¿Estás seguro de que quieres cerrar el mapa de Social-Link?\n\n⚠️ Si has usado 'Importar JSON' o 'Crear Proyecto' y no has exportado tus datos manualmente desde el panel lateral, TUS CAMBIOS SE PERDERÁN.")) {
-      clearDocument();
-    }
+  const handleCloseRequest = () => {
+    setShowCloseModal(true);
+  };
+
+  const forceClose = () => {
+    setShowCloseModal(false);
+    clearDocument();
   };
 
   // Hot Reloading Logic
@@ -222,49 +239,91 @@ function App() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#F8F9FA] overflow-hidden font-sans">
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-6 py-3 flex items-center justify-between shadow-sm z-20 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-inner">
-            <ExternalLink size={16} className="text-white" />
+    <>
+      <div className="h-screen w-screen flex flex-col bg-[#F8F9FA] overflow-hidden font-sans">
+        <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-6 py-3 flex items-center justify-between shadow-sm z-20 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-inner">
+              <ExternalLink size={16} className="text-white" />
+            </div>
+            <div>
+              <h1 className="font-bold text-gray-800 leading-tight">Social-Link</h1>
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Vault: {metadata.vaultOwner} • {nodes.length} Nodos</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-bold text-gray-800 leading-tight">Social-Link</h1>
-            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Vault: {metadata.vaultOwner} • {nodes.length} Nodos</p>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleExportZIP}
+              className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-indigo-200"
+            >
+              <Download size={14} /> Respaldar ZIP
+            </button>
+            <button 
+              onClick={exportToVectorPDF}
+              className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-green-600 hover:bg-green-50 px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-green-200"
+            >
+              <Download size={14} /> Exportar PDF
+            </button>
+            <button 
+              onClick={handleCloseRequest}
+              className="text-xs font-semibold text-red-500 hover:text-white bg-red-50 hover:bg-red-500 px-4 py-1.5 rounded-full transition-all cursor-pointer shadow-sm ml-2"
+            >
+              Cerrar Sesión
+            </button>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={handleExportZIP}
-            className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-indigo-200"
-          >
-            <Download size={14} /> Respaldar ZIP
-          </button>
-          <button 
-            onClick={exportToVectorPDF}
-            className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-green-600 hover:bg-green-50 px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-green-200"
-          >
-            <Download size={14} /> Exportar PDF
-          </button>
-          <button 
-            onClick={handleClose}
-            className="text-xs font-semibold text-red-500 hover:text-white bg-red-50 hover:bg-red-500 px-4 py-1.5 rounded-full transition-all cursor-pointer shadow-sm ml-2"
-          >
-            Cerrar Sesión
-          </button>
-        </div>
-      </header>
+        </header>
 
-      <main className="flex-1 relative flex">
-        <div className="flex-1 relative">
-          <GraphCanvas />
-          <Toolbar />
+        <main className="flex-1 relative flex">
+          <div className="flex-1 relative">
+            <GraphCanvas />
+            <Toolbar />
+          </div>
+          
+          {selectedEntityId && (
+            <div className="w-80 h-full bg-white border-l border-gray-200 shadow-2xl flex flex-col z-40 relative">
+              <Sidebar />
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Modal de Cierre de Sesión */}
+      {showCloseModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-extrabold text-gray-900 mb-2">¿Cerrar sin guardar?</h3>
+            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+              Si cierras el espacio de trabajo ahora, se perderán todos los cambios que hayas hecho desde el último respaldo. 
+              <br /><br />
+              ¿Qué deseas hacer antes de salir?
+            </p>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={async () => { 
+                  await handleExportZIP(); 
+                  forceClose(); 
+                }} 
+                className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
+              >
+                <Download size={18} /> Guardar ZIP y Cerrar
+              </button>
+              <button 
+                onClick={forceClose} 
+                className="w-full py-3 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-colors"
+              >
+                Cerrar y descartar cambios
+              </button>
+              <button 
+                onClick={() => setShowCloseModal(false)} 
+                className="w-full py-3 text-gray-500 font-bold rounded-xl hover:bg-gray-100 transition-colors mt-2"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
-        {selectedEntityId && (
-          <Sidebar />
-        )}
-      </main>
-    </div>
+      )}
+    </>
   );
 }
 
