@@ -208,8 +208,12 @@ function App() {
 
     const content = await zip.generateAsync({ type: "blob" });
     
-    // Generar nombre de archivo
-    const principalName = state.nodes.length > 0 ? (state.nodes[0].data.semanticLabel || 'Vacio') : 'Vacio';
+    const firstInd = state.nodes.find(n => n.type === 'individual');
+    const fallbackName = state.nodes.length > 0 ? (state.nodes[0].data.semanticLabel || 'Proyecto') : 'Vacio';
+    const principalName = firstInd 
+      ? (firstInd.data.identity?.alias || [firstInd.data.identity?.givenName, firstInd.data.identity?.familyName].filter(Boolean).join('_') || 'Persona') 
+      : fallbackName;
+      
     const now = new Date();
     const pad = (n: number) => n.toString().padStart(2, '0');
     const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;

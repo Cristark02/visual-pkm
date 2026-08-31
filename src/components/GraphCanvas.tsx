@@ -229,7 +229,16 @@ export default function GraphCanvas() {
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((nds) => {
-      const clusterDrags = changes.filter(c => c.type === 'position' && c.dragging) as NodePositionChange[];
+      // Ignoramos cambios de dimensiones con valores a cero que envía React Flow al montar nodos.
+      // Esto previene el bug de nodos invisibles al importar un proyecto.
+      const validChanges = changes.filter(c => {
+        if (c.type === 'dimensions') {
+          return c.dimensions && c.dimensions.width > 0 && c.dimensions.height > 0;
+        }
+        return true;
+      });
+
+      const clusterDrags = validChanges.filter(c => c.type === 'position' && c.dragging) as NodePositionChange[];
       const extraChanges: NodeChange[] = [];
 
       if (clusterDrags.length > 0 && dragContext.current.active) {
@@ -263,7 +272,7 @@ export default function GraphCanvas() {
         }
       }
       
-      const newNodes = applyNodeChanges([...changes, ...extraChanges], nds);
+      const newNodes = applyNodeChanges([...validChanges, ...extraChanges], nds);
       nodesRef.current = newNodes;
       return newNodes;
     });

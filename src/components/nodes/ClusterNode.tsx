@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useRef } from 'react';
 import { Handle, Position } from 'reactflow';
 import type { NodeProps } from 'reactflow';
 import { NodeResizeControl } from '@reactflow/node-resizer';
@@ -9,7 +9,21 @@ import { useStore } from '../../store/useStore';
 
 const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   const [isHovered, setIsHovered] = useState(false);
+  const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = () => {
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    hoverTimeout.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 400); // Permissive hover buffer
+  };
+
   const updateNodeData = useStore(state => state.updateNodeData);
+  const setSelectedEntity = useStore(state => state.setSelectedEntity);
   const shape = data.biographicalAttributes?.shape || 'square';
   
   const svgPaths: Record<string, string> = {
@@ -30,8 +44,9 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   return (
     <div 
       className="w-full h-full relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onPointerDown={() => setSelectedEntity(id, 'node')}
     >
       {/* Botón de Enlace (Lock/Link) - SIEMPRE VISIBLE PERO TRANSLÚCIDO SI NO ESTÁ SELECCIONADO */}
       <button 
