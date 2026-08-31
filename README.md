@@ -1,6 +1,6 @@
 # Social-Link
 
-Social-Link es una herramienta experimental concebida para la Gestión del Conocimiento Personal y la cartografía relacional. Permite mapear de forma visual e interactiva la red de contactos, recuerdos y notas de vida de un individuo asegurando una arquitectura totalmente offline (PWA) basada en la privacidad y la preservación local (JSON puro sin servidor).
+Social-Link es un proyecto estrictamente personal concebido como un "mapa mental" privado para registrar, visualizar y recordar a las personas de mi entorno a lo largo del tiempo. No es una herramienta comercial, profesional ni de productividad, sino un archivo interactivo para preservar mis contactos, grupos y recuerdos. Funciona de manera totalmente offline (como aplicación PWA) para garantizar la privacidad, sin servidores ni bases de datos en la nube.
 
 👉 **[Prueba Social-Link en vivo haciendo clic aquí](https://cristark02.github.io/visual-pkm)**
 

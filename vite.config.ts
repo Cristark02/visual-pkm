@@ -15,9 +15,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
       },
       manifest: {
-        name: 'CRM Visual & Sistema PKM',
-        short_name: 'CerebroExterno',
-        description: 'Gestión del conocimiento personal offline y cartografía relacional.',
+        name: 'Social-Link Mapeo Personal',
+        short_name: 'SocialLink',
+        description: 'Mapa relacional personal para registrar contactos y recuerdos offline.',
         theme_color: '#f9fafb',
         background_color: '#ffffff',
         display: 'standalone',
