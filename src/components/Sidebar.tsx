@@ -90,74 +90,77 @@ export default function Sidebar() {
   if (!entity) return null;
 
   return (
-    <div className="absolute top-0 right-0 h-full w-96 bg-white shadow-2xl border-l border-gray-200 flex flex-col z-50 transform transition-transform duration-300">
-      <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
-        <h2 className="font-semibold text-gray-700 truncate pr-2">
+    <div className="absolute top-4 right-4 bottom-4 w-96 bg-white/90 backdrop-blur-xl shadow-2xl rounded-2xl border border-gray-100 flex flex-col z-50 transform transition-all duration-300">
+      <div className="flex items-center justify-between p-5 border-b border-gray-100/50 bg-transparent">
+        <h2 className="font-bold text-gray-800 text-lg truncate pr-2">
           {selectedEntityType === 'node' 
             ? ((entity as NodeModel).data.identity?.givenName || (entity as NodeModel).data.semanticLabel || 'Nodo')
             : `Relación: ${(entity as EdgeModel).semanticRelationshipType}`}
         </h2>
         <div className="flex gap-2">
           {!isEditing ? (
-            <button onClick={() => setIsEditing(true)} className="p-1.5 text-gray-500 hover:text-blue-600 rounded hover:bg-blue-50 cursor-pointer">
-              <Edit2 size={18} />
+            <button onClick={() => setIsEditing(true)} className="p-2 text-gray-500 hover:text-indigo-600 rounded-full hover:bg-indigo-50 transition-all cursor-pointer">
+              <Edit2 size={16} />
             </button>
           ) : (
-            <button onClick={handleSave} className="p-1.5 text-green-600 hover:text-green-700 rounded hover:bg-green-50 cursor-pointer">
-              <Check size={18} />
+            <button onClick={handleSave} className="p-2 text-green-600 hover:text-green-700 rounded-full hover:bg-green-50 transition-all cursor-pointer">
+              <Check size={16} />
             </button>
           )}
-          <button onClick={() => setSelectedEntity(null, null)} className="p-1.5 text-gray-500 hover:text-red-600 rounded hover:bg-red-50 cursor-pointer">
-            <X size={18} />
+          <button onClick={() => setSelectedEntity(null, null)} className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-all cursor-pointer">
+            <X size={16} />
           </button>
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto flex flex-col">
+      <div className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
         {isEditing && (
-          <div className="p-4 bg-gray-50 border-b border-gray-200 space-y-3">
+          <div className="p-5 bg-indigo-50/30 border-b border-indigo-100/50 space-y-4">
             {selectedEntityType === 'node' && (entity as NodeModel).type === 'individual' && (
               <>
-                <div className="flex gap-2">
-                  <input type="text" value={givenName} onChange={e => setGivenName(e.target.value)} placeholder="Nombre" className="w-full p-2 text-sm border border-gray-300 rounded" />
-                  <input type="text" value={familyName} onChange={e => setFamilyName(e.target.value)} placeholder="Apellidos" className="w-full p-2 text-sm border border-gray-300 rounded" />
+                <div className="flex gap-3">
+                  <input type="text" value={givenName} onChange={e => setGivenName(e.target.value)} placeholder="Nombre" className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all shadow-sm" />
+                  <input type="text" value={familyName} onChange={e => setFamilyName(e.target.value)} placeholder="Apellidos" className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all shadow-sm" />
                 </div>
-                <select value={shape} onChange={e => setShape(e.target.value)} className="w-full p-2 text-sm border border-gray-300 rounded bg-white">
-                  <option value="circle">Círculo</option>
-                  <option value="square">Cuadrado</option>
-                  <option value="star">Estrella</option>
-                  <option value="heart">Corazón</option>
+                <select value={shape} onChange={e => setShape(e.target.value)} className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all shadow-sm">
+                  <option value="circle">Forma: Círculo</option>
+                  <option value="square">Forma: Cuadrado</option>
+                  <option value="star">Forma: Estrella</option>
+                  <option value="heart">Forma: Corazón</option>
                 </select>
-                <button onClick={() => alert('Para añadir fotos, ponlas en tu carpeta y nómbralas igual que el ID del nodo en un futuro update, o añádelas al JSON directamente.')} className="w-full flex items-center justify-center gap-2 p-2 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 cursor-pointer">
-                  <Camera size={14} /> Asignar Foto Local
+                <button onClick={() => alert('Para añadir fotos, ponlas en tu carpeta y nómbralas igual que el ID del nodo en un futuro update, o añádelas al JSON directamente.')} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all cursor-pointer shadow-sm">
+                  <Camera size={16} className="text-indigo-500" /> Asignar Foto Local
                 </button>
               </>
             )}
             
             {selectedEntityType === 'node' && (entity as NodeModel).type === 'cluster' && (
-              <input type="text" value={label} onChange={e => setLabel(e.target.value)} placeholder="Nombre del Grupo" className="w-full p-2 text-sm border border-gray-300 rounded" />
+              <input type="text" value={label} onChange={e => setLabel(e.target.value)} placeholder="Nombre del Grupo" className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all shadow-sm" />
             )}
             
             {selectedEntityType === 'edge' && (
-              <input type="text" value={relationType} onChange={e => setRelationType(e.target.value)} placeholder="Ej: Amigo, Ex-pareja, Familiar" className="w-full p-2 text-sm border border-gray-300 rounded" />
+              <input type="text" value={relationType} onChange={e => setRelationType(e.target.value)} placeholder="Ej: Amigo, Ex-pareja, Familiar" className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all shadow-sm" />
             )}
           </div>
         )}
 
-        <div className="flex-1 p-6 bg-white">
+        <div className="flex-1 p-6">
           {isEditing ? (
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              className="w-full h-full min-h-[300px] p-4 bg-gray-50 border border-gray-200 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full h-full min-h-[400px] p-5 bg-white border border-gray-200 rounded-2xl text-sm font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none shadow-sm transition-all"
               placeholder="Escribe el diario o notas en Markdown..."
             />
           ) : (
-            <div className="prose prose-sm prose-blue max-w-none">
+            <div className="prose prose-sm prose-indigo max-w-none text-gray-700">
               {currentNotes ? (
                 <ReactMarkdown>{currentNotes}</ReactMarkdown>
               ) : (
-                <p className="text-gray-400 italic">No hay notas registradas. Haz clic en el lápiz para empezar a escribir.</p>
+                <div className="flex flex-col items-center justify-center h-48 text-center opacity-50">
+                  <Edit2 size={32} className="mb-3 text-gray-400" />
+                  <p className="text-gray-500 italic">No hay notas registradas.<br/>Haz clic en el lápiz para empezar a escribir.</p>
+                </div>
               )}
             </div>
           )}

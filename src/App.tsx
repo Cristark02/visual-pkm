@@ -183,30 +183,47 @@ function App() {
     );
   }
 
+  const handleExportZIP = async () => {
+    const JSZip = (await import('jszip')).default;
+    const { saveAs } = await import('file-saver');
+    const zip = new JSZip();
+    const state = useStore.getState();
+    const stateDoc = { documentVersion: state.documentVersion, metadata: state.metadata, nodes: state.nodes, edges: state.edges };
+    zip.file("state.json", JSON.stringify(stateDoc, null, 2));
+    const content = await zip.generateAsync({ type: "blob" });
+    saveAs(content, "social-link-backup.zip");
+  };
+
   return (
-    <div className="h-screen w-screen flex flex-col bg-gray-50 overflow-hidden">
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm z-10 shrink-0">
+    <div className="h-screen w-screen flex flex-col bg-[#F8F9FA] overflow-hidden font-sans">
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-6 py-3 flex items-center justify-between shadow-sm z-20 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
-            <ExternalLink size={16} className="text-blue-600" />
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-inner">
+            <ExternalLink size={16} className="text-white" />
           </div>
           <div>
             <h1 className="font-bold text-gray-800 leading-tight">Social-Link</h1>
-            <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">Vault: {metadata.vaultOwner} • Nodos: {nodes.length} • Aristas: {edges.length}</p>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Vault: {metadata.vaultOwner} • {nodes.length} Nodos</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleExportZIP}
+            className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-indigo-200"
+          >
+            <Download size={14} /> Respaldar ZIP
+          </button>
           <button 
             onClick={exportToVectorPDF}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded transition-colors cursor-pointer border border-gray-200 font-medium shadow-sm"
+            className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-green-600 hover:bg-green-50 px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-green-200"
           >
-            <Download size={16} /> PDF Vectorial
+            <Download size={14} /> Exportar PDF
           </button>
           <button 
             onClick={handleClose}
-            className="text-sm text-red-600 bg-red-50 hover:bg-red-100 px-4 py-1.5 rounded transition-colors cursor-pointer font-medium shadow-sm"
+            className="text-xs font-semibold text-red-500 hover:text-white bg-red-50 hover:bg-red-500 px-4 py-1.5 rounded-full transition-all cursor-pointer shadow-sm ml-2"
           >
-            Cerrar
+            Cerrar Sesión
           </button>
         </div>
       </header>

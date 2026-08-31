@@ -57,23 +57,28 @@ export const useStore = create<PKMState>((set) => ({
 
   addNode: (type) => set((state) => {
     const id = `node-${crypto.randomUUID()}`;
+    const isFirst = state.nodes.length === 0;
+    
     const newNode: NodeModel = {
       id,
       type,
       data: type === 'individual' 
-        ? { identity: { givenName: 'Nueva', familyName: 'Persona' }, biographicalAttributes: { shape: 'circle' }, historicalNotes: '' }
+        ? { identity: { givenName: isFirst ? 'Tú' : 'Nueva', familyName: isFirst ? '' : 'Persona' }, biographicalAttributes: { shape: 'circle' }, historicalNotes: '' }
         : { semanticLabel: 'Nuevo Grupo', historicalNotes: '' }
     };
     return { nodes: [...state.nodes, newNode], selectedEntityId: id, selectedEntityType: 'node' };
   }),
 
   addEdge: (source, target) => set((state) => {
+    // Evitar aristas duplicadas
+    if (state.edges.some(e => e.sourceNodeId === source && e.targetNodeId === target)) return state;
+    
     const id = `edge-${crypto.randomUUID()}`;
     const newEdge: EdgeModel = {
       id,
       sourceNodeId: source,
       targetNodeId: target,
-      semanticRelationshipType: 'Conocido',
+      semanticRelationshipType: 'Conexión',
       data: { contextualNotes: '' }
     };
     return { edges: [...state.edges, newEdge], selectedEntityId: id, selectedEntityType: 'edge' };

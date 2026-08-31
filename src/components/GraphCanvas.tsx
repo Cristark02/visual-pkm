@@ -52,24 +52,57 @@ export default function GraphCanvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   useEffect(() => {
-    // 1. Mapeo de Nodos
-    const rfNodes: RFNode[] = storeNodes.map((n, i) => {
-      const x = (i % 5) * 200 + 100;
-      const y = Math.floor(i / 5) * 200 + 100;
-      const isCluster = n.type === 'cluster';
+    // Sync store nodes to RF nodes
+    setNodes((currentNodes) => {
+      const rfNodes: RFNode[] = storeNodes.map((n, i) => {
+        // Keep existing positions if already placed
+        const existingNode = currentNodes.find(cn => cn.id === n.id);
+        
+        let x = 0;
+        let y = 0;
 
-      return {
-        id: n.id,
-        type: n.type,
-        position: { x, y },
-        parentNode: n.logicalParentNode,
-        extent: n.logicalParentNode ? 'parent' : undefined,
-        style: isCluster ? { width: 400, height: 400, zIndex: -1 } : { zIndex: 1 },
-        data: {
-          ...n.data,
-          computedShape: isCluster ? undefined : determineShape(n.id, storeEdges)
+        if (existingNode) {
+          x = existingNode.position.x;
+          y = existingNode.position.y;
+        } else if (i === 0) {
+          // Usuario en el centro
+          x = 0;
+          y = 0;
+        } else {
+          // Distribución radial o floral
+          const radiusStep = 180;
+          const nodesPerRing = 8;
+          
+          const ringIndex = Math.floor((i - 1) / nodesPerRing) + 1;
+          const indexInRing = (i - 1) % nodesPerRing;
+          
+          const currentRadius = ringIndex * radiusStep;
+          const angleStep = (2 * Math.PI) / nodesPerRing;
+          
+          // Añadir un pequeño offset para que los anillos se entrelacen
+          const angleOffset = (ringIndex % 2) * (angleStep / 2);
+          const angle = indexInRing * angleStep + angleOffset;
+
+          x = currentRadius * Math.cos(angle);
+          y = currentRadius * Math.sin(angle);
         }
-      };
+
+        const isCluster = n.type === 'cluster';
+
+        return {
+          id: n.id,
+          type: n.type,
+          position: { x, y },
+          parentNode: n.logicalParentNode,
+          extent: n.logicalParentNode ? 'parent' : undefined,
+          style: isCluster ? { width: 400, height: 400, zIndex: -1 } : { zIndex: 1 },
+          data: {
+            ...n.data,
+            computedShape: isCluster ? undefined : determineShape(n.id, storeEdges)
+          }
+        };
+      });
+      return rfNodes;
     });
 
     // 2. Cálculo de Aristas Paralelas

@@ -19,16 +19,8 @@ const ParallelEdge = ({
   let path = '';
 
   if (offsetIndex === 0 && !isZigZag) {
-    // Si no hay offset ni zigzag, usamos la curva estándar de React Flow
-    const [standardPath] = getBezierPath({
-      sourceX,
-      sourceY,
-      sourcePosition,
-      targetX,
-      targetY,
-      targetPosition,
-    });
-    path = standardPath;
+    // Línea recta para la conexión central por defecto
+    path = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
   } else {
     // Calcular vector normal para el desplazamiento
     const dx = targetX - sourceX;
