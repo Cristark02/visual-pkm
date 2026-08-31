@@ -58,11 +58,11 @@ export default function Sidebar() {
   const isEdge = selectedEntityType === 'edge';
 
   return (
-    <div className="absolute top-4 right-4 bottom-4 w-[calc(100%-2rem)] sm:w-96 bg-white/90 backdrop-blur-xl shadow-2xl rounded-2xl border border-gray-100 flex flex-col z-50 transform transition-all duration-300">
+    <div className="h-full w-full bg-white/90 backdrop-blur-xl flex flex-col transform transition-all duration-300">
       <div className="flex items-center justify-between p-5 border-b border-gray-100/50 bg-transparent shrink-0">
         <h2 className="font-bold text-gray-800 text-lg truncate pr-2">
           {isNode 
-            ? ((entity as NodeModel).data.identity?.givenName || (entity as NodeModel).data.semanticLabel || 'Nodo')
+            ? ((entity as NodeModel).data.identity?.alias || (entity as NodeModel).data.identity?.givenName || (entity as NodeModel).data.semanticLabel || 'Nodo')
             : `Unión`}
         </h2>
         <button onClick={() => setSelectedEntity(null, null)} className="p-2 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-all cursor-pointer">

@@ -94,7 +94,7 @@ function App() {
   if (!metadata) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-        <div className="bg-white p-8 rounded-xl shadow-lg max-w-lg w-full text-center">
+        <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg max-w-lg w-full text-center">
           <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <ExternalLink size={32} className="text-blue-600" />
           </div>
@@ -241,34 +241,37 @@ function App() {
   return (
     <>
       <div className="h-screen w-screen flex flex-col bg-[#F8F9FA] overflow-hidden font-sans">
-        <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-6 py-3 flex items-center justify-between shadow-sm z-20 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-inner">
-              <ExternalLink size={16} className="text-white" />
+        <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-3 sm:px-6 py-2 sm:py-3 flex flex-wrap sm:flex-nowrap items-center justify-between shadow-sm z-20 shrink-0 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-inner">
+              <ExternalLink size={14} className="text-white sm:hidden" />
+              <ExternalLink size={16} className="text-white hidden sm:block" />
             </div>
             <div>
-              <h1 className="font-bold text-gray-800 leading-tight">Social-Link</h1>
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Vault: {metadata.vaultOwner} • {nodes.length} Nodos</p>
+              <h1 className="font-bold text-gray-800 text-sm sm:text-base leading-tight">Social-Link</h1>
+              <p className="hidden sm:block text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Vault: {metadata.vaultOwner} • {nodes.length} Nodos</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button 
               onClick={handleExportZIP}
-              className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-indigo-200"
+              className="flex items-center gap-1 sm:gap-2 text-[11px] sm:text-xs font-semibold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 px-2 sm:px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-indigo-200"
+              title="Respaldar ZIP"
             >
-              <Download size={14} /> Respaldar ZIP
+              <Download size={14} /> <span className="hidden sm:inline">Respaldar</span>
             </button>
             <button 
               onClick={exportToVectorPDF}
-              className="flex items-center gap-2 text-xs font-semibold text-gray-600 hover:text-green-600 hover:bg-green-50 px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-green-200"
+              className="flex items-center gap-1 sm:gap-2 text-[11px] sm:text-xs font-semibold text-gray-600 hover:text-green-600 hover:bg-green-50 px-2 sm:px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-green-200"
+              title="Exportar PDF"
             >
-              <Download size={14} /> Exportar PDF
+              <Download size={14} /> <span className="hidden sm:inline">PDF</span>
             </button>
             <button 
               onClick={handleCloseRequest}
-              className="text-xs font-semibold text-red-500 hover:text-white bg-red-50 hover:bg-red-500 px-4 py-1.5 rounded-full transition-all cursor-pointer shadow-sm ml-2"
+              className="text-[11px] sm:text-xs font-semibold text-red-500 hover:text-white bg-red-50 hover:bg-red-500 px-3 sm:px-4 py-1.5 rounded-full transition-all cursor-pointer shadow-sm ml-1 sm:ml-2"
             >
-              Cerrar Sesión
+              Salir
             </button>
           </div>
         </header>
@@ -280,9 +283,17 @@ function App() {
           </div>
           
           {selectedEntityId && (
-            <div className="w-80 h-full bg-white border-l border-gray-200 shadow-2xl flex flex-col z-40 relative">
-              <Sidebar />
-            </div>
+            <>
+              {/* Mobile Backdrop */}
+              <div 
+                className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
+                onClick={() => useStore.getState().setSelectedEntity(null, null)}
+              />
+              {/* Sidebar Panel */}
+              <div className="fixed inset-y-0 right-0 w-[85%] max-w-[320px] bg-white shadow-2xl flex flex-col z-50 md:relative md:inset-auto md:w-80 md:max-w-none md:z-40 border-l border-gray-200 animate-in slide-in-from-right duration-300">
+                <Sidebar />
+              </div>
+            </>
           )}
         </main>
       </div>
