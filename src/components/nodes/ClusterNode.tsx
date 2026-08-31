@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import type { NodeProps } from 'reactflow';
 import { NodeResizeControl } from '@reactflow/node-resizer';
@@ -8,6 +8,7 @@ import type { NodeData } from '../../types/store';
 import { useStore } from '../../store/useStore';
 
 const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
+  const [isHovered, setIsHovered] = useState(false);
   const updateNodeData = useStore(state => state.updateNodeData);
   const shape = data.biographicalAttributes?.shape || 'square';
   
@@ -27,7 +28,11 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   const svgInner = svgPaths[shape] || svgPaths.square;
 
   return (
-    <>
+    <div 
+      className="w-full h-full relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       {/* Botón de Enlace (Lock/Link) - SIEMPRE VISIBLE PERO TRANSLÚCIDO SI NO ESTÁ SELECCIONADO */}
       <button 
         onClick={(e) => { 
@@ -38,13 +43,13 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
           data.isChainLinked 
             ? 'bg-indigo-100/90 text-indigo-700 border-indigo-300 shadow-md scale-105' 
             : 'bg-white/50 text-gray-500 border-gray-200 hover:bg-white/90 shadow-sm'
-        } ${selected ? 'opacity-100' : 'opacity-30 hover:opacity-100'}`}
+        } ${selected || isHovered ? 'opacity-100' : 'opacity-30'}`}
         title={data.isChainLinked ? "Arrastre en cadena ACTIVADO (solapamientos se mueven juntos)" : "Arrastre en cadena DESACTIVADO"}
       >
         {data.isChainLinked ? <Link2 size={24} /> : <Unlink size={24} />}
       </button>
 
-      {selected && (
+      {(selected || isHovered) && (
         <NodeResizeControl 
           minWidth={150} 
           minHeight={150}
@@ -91,7 +96,7 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         
         <Handle type="source" position={Position.Bottom} className="opacity-0" />
       </div>
-    </>
+    </div>
   );
 };
 

@@ -60,12 +60,25 @@ export const useStore = create<PKMState>((set) => ({
     const id = `node-${crypto.randomUUID()}`;
     const isFirst = state.nodes.length === 0;
     
+    let visualPosition = undefined;
+    
+    if (type === 'cluster' && state.nodes.length > 0) {
+      let maxY = -Infinity;
+      state.nodes.forEach(n => {
+        const y = n.data.visualPosition?.y || 0;
+        const h = n.data.visualDimensions?.height || (n.type === 'cluster' ? 400 : 80);
+        if (y + h > maxY) maxY = y + h;
+      });
+      if (maxY === -Infinity) maxY = 0;
+      visualPosition = { x: 0, y: maxY + 150 };
+    }
+    
     const newNode: NodeModel = {
       id,
       type,
       data: type === 'individual' 
         ? { identity: { givenName: isFirst ? 'Tú' : 'Nueva', familyName: isFirst ? '' : 'Persona' }, biographicalAttributes: { shape: 'circle' }, historicalNotes: '' }
-        : { semanticLabel: 'Nuevo Grupo', historicalNotes: '' }
+        : { semanticLabel: 'Nuevo Grupo', historicalNotes: '', visualPosition }
     };
     return { nodes: [...state.nodes, newNode], selectedEntityId: id, selectedEntityType: 'node' };
   }),
