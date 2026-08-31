@@ -4,8 +4,10 @@ import type { NodeProps } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 import '@reactflow/node-resizer/dist/style.css';
 import type { NodeData } from '../../types/store';
+import { useStore } from '../../store/useStore';
 
-const ClusterNode = ({ data, selected }: NodeProps<NodeData>) => {
+const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
+  const updateNodeData = useStore(state => state.updateNodeData);
   const shape = data.biographicalAttributes?.shape || 'square';
   
   const svgPaths: Record<string, string> = {
@@ -30,6 +32,9 @@ const ClusterNode = ({ data, selected }: NodeProps<NodeData>) => {
         isVisible={selected} 
         minWidth={150} 
         minHeight={150} 
+        onResizeEnd={(_, params) => {
+          updateNodeData(id, { visualDimensions: { width: params.width, height: params.height } });
+        }}
       />
       
       <div className="w-full h-full relative z-0">

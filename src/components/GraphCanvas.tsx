@@ -229,13 +229,6 @@ export default function GraphCanvas() {
     setNodes((nds) => {
       const clusterDrags = changes.filter(c => c.type === 'position' && c.dragging) as NodePositionChange[];
       const extraChanges: NodeChange[] = [];
-      
-      // Dimension changes processing (NodeResizer)
-      changes.filter(c => c.type === 'dimensions').forEach((dimChange: any) => {
-        if (dimChange.dimensions) {
-          updateNodeData(dimChange.id, { visualDimensions: dimChange.dimensions });
-        }
-      });
 
       if (clusterDrags.length > 0 && dragContext.current.active) {
         // Encontramos el delta del nodo arrastrado principal
