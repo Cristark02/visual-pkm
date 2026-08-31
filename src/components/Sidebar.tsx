@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { X, Camera, Search } from 'lucide-react';
+import { X, Camera, Search, Trash2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { saveDocument } from '../lib/fsManager';
 import { DEFAULT_TAXONOMY, getTaxonomyRelation } from '../config/taxonomy';
@@ -320,6 +320,21 @@ export default function Sidebar() {
             placeholder="Añade contexto histórico, anécdotas..."
           />
         </div>
+      </div>
+
+      <div className="p-4 border-t border-indigo-100/50 bg-gray-50 shrink-0">
+        <button 
+          onClick={() => {
+            const typeName = isEdge ? 'vínculo' : (isCluster ? 'grupo' : 'persona');
+            if (window.confirm(`¿Estás seguro de que deseas eliminar este ${typeName}?`)) {
+              if (isEdge) useStore.getState().removeEdge(entity.id);
+              else useStore.getState().removeNode(entity.id);
+            }
+          }}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold text-red-600 bg-white hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-xl transition-all cursor-pointer shadow-sm"
+        >
+          <Trash2 size={16} /> Eliminar {isEdge ? 'Vínculo' : (isCluster ? 'Grupo' : 'Persona')}
+        </button>
       </div>
     </div>
   );

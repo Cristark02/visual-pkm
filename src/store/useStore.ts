@@ -24,6 +24,9 @@ interface PKMState {
   
   updateNodeNotes: (id: string, notes: string) => void;
   updateEdgeNotes: (id: string, notes: string) => void;
+
+  removeNode: (id: string) => void;
+  removeEdge: (id: string) => void;
 }
 
 export const useStore = create<PKMState>((set) => ({
@@ -120,5 +123,35 @@ export const useStore = create<PKMState>((set) => ({
     edges: state.edges.map(e => 
       e.id === id ? { ...e, data: { ...e.data, contextualNotes: notes } } : e
     )
+  })),
+
+  removeNode: (id) => set((state) => {
+    const nodeToRemove = state.nodes.find(n => n.id === id);
+    const isCluster = nodeToRemove?.type === 'cluster';
+    
+    let remainingNodes = state.nodes.filter(n => n.id !== id);
+    if (isCluster) {
+      remainingNodes = remainingNodes.map(n => {
+         if (n.data.clusterIds?.includes(id)) {
+           return { ...n, data: { ...n.data, clusterIds: n.data.clusterIds.filter(c => c !== id) } };
+         }
+         return n;
+      });
+    }
+    
+    const remainingEdges = state.edges.filter(e => e.sourceNodeId !== id && e.targetNodeId !== id);
+    
+    return { 
+      nodes: remainingNodes, 
+      edges: remainingEdges,
+      selectedEntityId: state.selectedEntityId === id ? null : state.selectedEntityId,
+      selectedEntityType: state.selectedEntityId === id ? null : state.selectedEntityType
+    };
+  }),
+
+  removeEdge: (id) => set((state) => ({
+    edges: state.edges.filter(e => e.id !== id),
+    selectedEntityId: state.selectedEntityId === id ? null : state.selectedEntityId,
+    selectedEntityType: state.selectedEntityId === id ? null : state.selectedEntityType
   })),
 }));
