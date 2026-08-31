@@ -82,7 +82,11 @@ const ParallelEdge = ({
         strokeWidth={20}
         className="react-flow__edge-interaction cursor-pointer"
       />
-      <BaseEdge path={path} markerEnd={taxRule.arrow ? "url(#arrowhead)" : markerEnd} style={edgeStyle} />
+      <BaseEdge 
+        path={path} 
+        markerEnd={markerEnd} 
+        style={edgeStyle} 
+      />
     </>
   );
 };

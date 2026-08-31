@@ -15,7 +15,7 @@ import { useStore } from '../store/useStore';
 import IndividualNode from './nodes/IndividualNode';
 import ClusterNode from './nodes/ClusterNode';
 import ParallelEdge from './edges/ParallelEdge';
-import { getEdgeStyle } from '../lib/edgeStyles';
+import { getTaxonomyRelation } from '../config/taxonomy';
 
 const nodeTypes = {
   individual: IndividualNode,
@@ -35,9 +35,9 @@ const determineShape = (nodeId: string, edges: any[]) => {
 
   for (const edge of relatedEdges) {
     const type = edge.semanticRelationshipType?.toLowerCase() || '';
-    if (type.includes('partner') && !type.includes('ex')) isPartner = true;
-    if (type.includes('mentor')) isMentor = true;
-    if (type.includes('parent') || type.includes('child')) isFamily = true;
+    if (type.includes('pareja') || type.includes('cónyuge')) isPartner = true;
+    if (type.includes('mentor') || type.includes('profesor')) isMentor = true;
+    if (type.includes('padre') || type.includes('madre') || type.includes('hijo')) isFamily = true;
   }
 
   if (isPartner) return 'heart';
@@ -131,7 +131,7 @@ export default function GraphCanvas() {
           offsetIndex = index === 0 ? 0 : Math.ceil(index / 2) * (index % 2 === 0 ? 1 : -1);
         }
 
-        const { stroke, strokeWidth, strokeDasharray, isZigZag } = getEdgeStyle(e.semanticRelationshipType || '');
+        const taxRule = getTaxonomyRelation(e.semanticRelationshipType || '');
 
         rfEdges.push({
           id: e.id,
@@ -139,16 +139,12 @@ export default function GraphCanvas() {
           target: e.targetNodeId,
           type: 'parallel',
           animated: false,
-          style: { stroke, strokeWidth, strokeDasharray },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: stroke,
-          },
+          markerEnd: taxRule.arrow ? { type: MarkerType.ArrowClosed, color: taxRule.color } : undefined,
           data: {
             ...e.data,
             semanticRelationshipType: e.semanticRelationshipType,
             offsetIndex,
-            isZigZag: isZigZag || e.semanticRelationshipType === 'Conflicto'
+            isZigZag: e.semanticRelationshipType === 'Conflicto'
           }
         });
       });
@@ -183,13 +179,6 @@ export default function GraphCanvas() {
 
   return (
     <div className="w-full h-full bg-gray-50">
-      <svg style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0 }}>
-        <defs>
-          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="currentColor" />
-          </marker>
-        </defs>
-      </svg>
       <ReactFlow
         nodes={nodes}
         edges={edges}
