@@ -28,18 +28,21 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
 
   return (
     <>
-      {selected && (
-        <div className="absolute -top-14 left-1/2 transform -translate-x-1/2 pointer-events-auto flex items-center bg-white shadow-xl rounded-full px-4 py-2 gap-3 border border-indigo-100 z-50 animate-in fade-in slide-in-from-bottom-2">
-          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Arrastre en Cadena</span>
-          <button 
-            onClick={(e) => { e.stopPropagation(); updateNodeData(id, { isChainLinked: !data.isChainLinked }); }}
-            className={`p-1.5 rounded-full transition-colors cursor-pointer ${data.isChainLinked ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-            title={data.isChainLinked ? "Desvincular solapamientos" : "Vincular grupos solapados"}
-          >
-            {data.isChainLinked ? <Link2 size={16} /> : <Unlink size={16} />}
-          </button>
-        </div>
-      )}
+      {/* Botón de Enlace (Lock/Link) - SIEMPRE VISIBLE PERO TRANSLÚCIDO SI NO ESTÁ SELECCIONADO */}
+      <button 
+        onClick={(e) => { 
+          e.stopPropagation(); 
+          updateNodeData(id, { isChainLinked: !data.isChainLinked }); 
+        }}
+        className={`absolute top-2 right-2 z-50 p-2.5 rounded-full transition-all nodrag nopan cursor-pointer backdrop-blur-sm border ${
+          data.isChainLinked 
+            ? 'bg-indigo-100/90 text-indigo-700 border-indigo-300 shadow-md scale-105' 
+            : 'bg-white/50 text-gray-500 border-gray-200 hover:bg-white/90 shadow-sm'
+        } ${selected ? 'opacity-100' : 'opacity-30 hover:opacity-100'}`}
+        title={data.isChainLinked ? "Arrastre en cadena ACTIVADO (solapamientos se mueven juntos)" : "Arrastre en cadena DESACTIVADO"}
+      >
+        {data.isChainLinked ? <Link2 size={24} /> : <Unlink size={24} />}
+      </button>
 
       {selected && (
         <NodeResizeControl 
@@ -51,8 +54,8 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
           }}
           style={{ background: 'transparent', border: 'none' }}
         >
-          <div className="absolute bottom-0 left-0 w-8 h-8 transform translate-y-1/2 -translate-x-1/2 text-indigo-500 bg-white shadow-md border border-indigo-200 rounded-full flex items-center justify-center hover:bg-indigo-50 transition-colors pointer-events-auto cursor-sw-resize z-50">
-            <ArrowDownLeft size={16} />
+          <div className="absolute bottom-0 left-0 w-12 h-12 transform translate-y-1/2 -translate-x-1/2 text-indigo-600 bg-white shadow-xl border-2 border-indigo-200 rounded-full flex items-center justify-center hover:bg-indigo-50 active:bg-indigo-100 transition-colors pointer-events-auto cursor-sw-resize z-50 nodrag nopan">
+            <ArrowDownLeft size={24} />
           </div>
         </NodeResizeControl>
       )}
