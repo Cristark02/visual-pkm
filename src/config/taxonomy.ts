@@ -119,3 +119,41 @@ export const getTaxonomyRelation = (id: string): TaxonomyRule => {
   }
   return { id: 'Desconocido', color: '#9ca3af', width: 2, dashed: false, arrow: false };
 };
+
+export const getSmartLabel = (base: string, g1?: string, g2?: string): string => {
+  const isMale1 = g1 === 'Hombre';
+  const isMale2 = g2 === 'Hombre';
+  const hasMale = isMale1 || isMale2;
+  const isFeminineGroup = !hasMale && (g1 || g2);
+
+  const symmetricFeminine: Record<string, string> = {
+    'Amigo': 'Amigas', 'Amigo Íntimo': 'Amigas Íntimas', 'Mejor Amigo': 'Mejores Amigas', 'Ex-amigo': 'Ex-amigas',
+    'Hermano': 'Hermanas', 'Primo': 'Primas', 'Primo Segundo': 'Primas Segundas',
+    'Socio': 'Socias', 'Compañero': 'Compañeras', 'Compañero de Clase': 'Compañeras de Clase', 'Compañero de Club': 'Compañeras de Club',
+    'Vecino': 'Vecinas', 'Conocido': 'Conocidas', 'Familiar Político': 'Familiares Políticas'
+  };
+
+  const symmetricMasculine: Record<string, string> = {
+    'Amigo': 'Amigos', 'Amigo Íntimo': 'Amigos Íntimos', 'Mejor Amigo': 'Mejores Amigos', 'Ex-amigo': 'Ex-amigos',
+    'Hermano': 'Hermanos', 'Primo': 'Primos', 'Primo Segundo': 'Primos Segundos',
+    'Socio': 'Socios', 'Compañero': 'Compañeros', 'Compañero de Clase': 'Compañeros de Clase', 'Compañero de Club': 'Compañeros de Club',
+    'Vecino': 'Vecinos', 'Conocido': 'Conocidos', 'Familiar Político': 'Familiares Políticos', 'Colega': 'Colegas'
+  };
+
+  if (symmetricFeminine[base] || symmetricMasculine[base]) {
+    return isFeminineGroup ? (symmetricFeminine[base] || base) : (symmetricMasculine[base] || base);
+  }
+
+  const isFemaleSource = g1 === 'Mujer' || g1 === 'No binario' || g1 === 'Fluido' || g1 === 'Otro';
+  if (isFemaleSource) {
+    const asymmetricFeminine: Record<string, string> = {
+      'Hijo': 'Hija', 'Abuelo': 'Abuela', 'Nieto': 'Nieta', 'Tío': 'Tía', 'Tío Abuelo': 'Tía Abuela',
+      'Sobrino': 'Sobrina', 'Sobrino Nieto': 'Sobrina Nieta', 'Jefe': 'Jefa', 'Empleado': 'Empleada',
+      'Mentor': 'Mentora', 'Pupilo': 'Pupila', 'Profesor': 'Profesora', 'Alumno': 'Alumna',
+      'Líder Comunitario': 'Líder Comunitaria', 'Cliente': 'Clienta', 'Proveedor': 'Proveedora', 'Inversor': 'Inversora'
+    };
+    return asymmetricFeminine[base] || base;
+  }
+
+  return base;
+};

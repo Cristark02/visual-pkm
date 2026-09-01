@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { BaseEdge, EdgeLabelRenderer } from 'reactflow';
 import type { EdgeProps } from 'reactflow';
-import { getTaxonomyRelation } from '../../config/taxonomy';
+import { getTaxonomyRelation, getSmartLabel } from '../../config/taxonomy';
 import { useStore } from '../../store/useStore';
 
 const ParallelEdge = ({
@@ -21,48 +21,8 @@ const ParallelEdge = ({
   const rawSemanticType = data?.semanticRelationshipType || 'Conexión';
   const taxRule = getTaxonomyRelation(rawSemanticType);
 
-  // Obtener géneros de los nodos origen y destino para hacer los nombres "inteligentes"
   const g1 = useStore(state => state.nodes.find(n => n.id === source)?.data?.biographicalAttributes?.gender);
   const g2 = useStore(state => state.nodes.find(n => n.id === target)?.data?.biographicalAttributes?.gender);
-
-  const getSmartLabel = (base: string, g1?: string, g2?: string): string => {
-    const isMale1 = g1 === 'Hombre';
-    const isMale2 = g2 === 'Hombre';
-    const hasMale = isMale1 || isMale2;
-    // Si no hay hombres, pero hay alguna info de género, lo tratamos como femenino/plural inclusivo según pidió el usuario
-    const isFeminineGroup = !hasMale && (g1 || g2);
-
-    const symmetricFeminine: Record<string, string> = {
-      'Amigo': 'Amigas', 'Amigo Íntimo': 'Amigas Íntimas', 'Mejor Amigo': 'Mejores Amigas', 'Ex-amigo': 'Ex-amigas',
-      'Hermano': 'Hermanas', 'Primo': 'Primas', 'Primo Segundo': 'Primas Segundas',
-      'Socio': 'Socias', 'Compañero': 'Compañeras', 'Compañero de Clase': 'Compañeras de Clase', 'Compañero de Club': 'Compañeras de Club',
-      'Vecino': 'Vecinas', 'Conocido': 'Conocidas', 'Familiar Político': 'Familiares Políticas'
-    };
-
-    const symmetricMasculine: Record<string, string> = {
-      'Amigo': 'Amigos', 'Amigo Íntimo': 'Amigos Íntimos', 'Mejor Amigo': 'Mejores Amigos', 'Ex-amigo': 'Ex-amigos',
-      'Hermano': 'Hermanos', 'Primo': 'Primos', 'Primo Segundo': 'Primos Segundos',
-      'Socio': 'Socios', 'Compañero': 'Compañeros', 'Compañero de Clase': 'Compañeros de Clase', 'Compañero de Club': 'Compañeros de Club',
-      'Vecino': 'Vecinos', 'Conocido': 'Conocidos', 'Familiar Político': 'Familiares Políticos', 'Colega': 'Colegas'
-    };
-
-    if (symmetricFeminine[base] || symmetricMasculine[base]) {
-      return isFeminineGroup ? (symmetricFeminine[base] || base) : (symmetricMasculine[base] || base);
-    }
-
-    const isFemaleSource = g1 === 'Mujer' || g1 === 'No binario' || g1 === 'Fluido' || g1 === 'Otro';
-    if (isFemaleSource) {
-      const asymmetricFeminine: Record<string, string> = {
-        'Hijo': 'Hija', 'Abuelo': 'Abuela', 'Nieto': 'Nieta', 'Tío': 'Tía', 'Tío Abuelo': 'Tía Abuela',
-        'Sobrino': 'Sobrina', 'Sobrino Nieto': 'Sobrina Nieta', 'Jefe': 'Jefa', 'Empleado': 'Empleada',
-        'Mentor': 'Mentora', 'Pupilo': 'Pupila', 'Profesor': 'Profesora', 'Alumno': 'Alumna',
-        'Líder Comunitario': 'Líder Comunitaria', 'Cliente': 'Clienta', 'Proveedor': 'Proveedora', 'Inversor': 'Inversora'
-      };
-      return asymmetricFeminine[base] || base;
-    }
-
-    return base;
-  };
 
   const semanticType = getSmartLabel(rawSemanticType, g1, g2);
 
@@ -143,6 +103,11 @@ const ParallelEdge = ({
   // Si hay varios nombres en la misma ruta, los apilamos verticalmente
   if (offsetIndex !== 0) {
     labelY += offsetIndex * 14;
+  }
+
+  // Si hay colisión geométrica detectada desde GraphCanvas, aplicamos su offset
+  if (data?.collisionOffsetY) {
+    labelY += data.collisionOffsetY;
   }
 
   const isDuplicateLabel = data?.isDuplicateLabel || false;

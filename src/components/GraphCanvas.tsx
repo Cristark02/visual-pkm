@@ -21,7 +21,7 @@ import { useStore } from '../store/useStore';
 import IndividualNode from './nodes/IndividualNode';
 import ClusterNode from './nodes/ClusterNode';
 import ParallelEdge from './edges/ParallelEdge';
-import { getTaxonomyRelation } from '../config/taxonomy';
+import { getTaxonomyRelation, getSmartLabel } from '../config/taxonomy';
 
 const nodeTypes = {
   individual: IndividualNode,
@@ -189,8 +189,52 @@ export default function GraphCanvas() {
       });
     });
 
+    // === HASHING ESPACIAL PARA ETIQUETAS QUE SE CRUZAN GEOMÉTRICAMENTE ===
+    // Calcula aproximadamente el punto medio de cada arista para detectar choques entre uniones *diferentes*
+    const occupiedSpaces: { x: number, y: number, label: string, edge: RFEdge }[] = [];
+
+    rfEdges.forEach(edge => {
+      // Ignorar si ya está oculto (ej. uniones paralelas duplicadas)
+      if (edge.data.isDuplicateLabel) return;
+
+      const sNode = storeNodes.find(n => n.id === edge.source);
+      const tNode = storeNodes.find(n => n.id === edge.target);
+      if (!sNode || !tNode) return;
+
+      const sPos = sNode.data.visualPosition || { x: 0, y: 0 };
+      const tPos = tNode.data.visualPosition || { x: 0, y: 0 };
+
+      // Calcular punto medio aproximado
+      const sx = sPos.x + 40; // ~40 es el centro del nodo estándar
+      const sy = sPos.y + 40;
+      const tx = tPos.x + 40;
+      const ty = tPos.y + 40;
+      const mx = (sx + tx) / 2;
+      const my = (sy + ty) / 2;
+
+      const g1 = sNode.data?.biographicalAttributes?.gender;
+      const g2 = tNode.data?.biographicalAttributes?.gender;
+      
+      const finalSmartLabel = getSmartLabel(edge.data.semanticRelationshipType, g1, g2);
+
+      // Buscar si ya hay otra etiqueta muy cerca (radio de ~45px)
+      const collision = occupiedSpaces.find(pos => Math.hypot(pos.x - mx, pos.y - my) < 45);
+
+      if (collision) {
+        if (collision.label === finalSmartLabel) {
+          // ¡Fusión! Si se cruzan y dicen lo mismo, ocultamos la segunda para no emborronar
+          edge.data.isDuplicateLabel = true;
+        } else {
+          // Son distintas pero chocan en el espacio 2D. Aplicar un offset para apilarlas visualmente
+          edge.data.collisionOffsetY = (collision.edge.data.collisionOffsetY || 0) + 14;
+        }
+      } else {
+        occupiedSpaces.push({ x: mx, y: my, label: finalSmartLabel, edge });
+      }
+    });
+
     setEdges(rfEdges);
-  }, [storeEdges]);
+  }, [storeEdges, storeNodes]);
 
   const onNodeDragStart = useCallback((_: React.MouseEvent, node: RFNode) => {
     if (node.type === 'cluster') {
