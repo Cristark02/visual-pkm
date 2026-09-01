@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import 'svg2pdf.js';
+import { useStore } from '../store/useStore';
 
 // Converts an image URL (like a Blob URL) to Base64 to safely embed in the SVG for PDF
 async function urlToBase64(url: string): Promise<string> {
@@ -13,15 +14,23 @@ async function urlToBase64(url: string): Promise<string> {
   });
 }
 
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 /**
  * Transmuta el grafo de React Flow (HTML + SVG) a un documento SVG monolítico
  * puro, sin foreignObjects, para exportarlo a PDF en alta fidelidad.
- */export async function exportToVectorPDF() {
+ */
+export async function exportToVectorPDF() {
   const flowPane = document.querySelector('.react-flow__pane') as HTMLElement;
   if (!flowPane) return;
 
-  // Accedemos a los datos reales de los nodos a través del DOM indirectamente (o store si estuviera importado)
-  // Para no mezclar dependencias de React en este script vanilla, extraeremos info de los atributos de React Flow y del DOM.
+  const storeState = useStore.getState();
+  const storeNodes = storeState.nodes;
 
   // 1. Clonar las aristas (edges) que ya son SVG puros
   const edgesSvg = document.querySelector('.react-flow__edges') as SVGSVGElement;
@@ -42,7 +51,6 @@ async function urlToBase64(url: string): Promise<string> {
     const text = label.textContent || '';
     if (!text) continue;
 
-    // El transform suele ser: translate(-50%, -50%) translate(Xpx, Ypx)
     const match = transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
     if (!match) continue;
 
@@ -50,7 +58,6 @@ async function urlToBase64(url: string): Promise<string> {
     const y = parseFloat(match[2]);
     const color = label.style.color || '#3b82f6';
 
-    // Generar el SVG del texto, ajustando el -50% -50% con text-anchor y dominant-baseline
     edgeLabelsSvgString += `<text x="${x}" y="${y}" fill="${color}" font-size="10" font-family="sans-serif" font-weight="900" text-anchor="middle" dominant-baseline="central" letter-spacing="1.5">${text}</text>`;
   }
 
@@ -61,6 +68,9 @@ async function urlToBase64(url: string): Promise<string> {
 
   for (let i = 0; i < nodesHtml.length; i++) {
     const node = nodesHtml[i] as HTMLElement;
+    const nodeId = node.getAttribute('data-id');
+    const storeNode = storeNodes.find(n => n.id === nodeId);
+    
     const transform = node.style.transform;
     const match = transform.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
     if (!match) continue;
@@ -70,7 +80,6 @@ async function urlToBase64(url: string): Promise<string> {
     const w = node.offsetWidth;
     const h = node.offsetHeight;
 
-    // Actualizar bounding box
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
     maxX = Math.max(maxX, x + w);
@@ -79,30 +88,37 @@ async function urlToBase64(url: string): Promise<string> {
     const isCluster = node.classList.contains('react-flow__node-cluster');
     
     if (isCluster) {
-      // Extraer la geometria real del cluster y su color
       const svgG = node.querySelector('svg g');
       const innerSvg = svgG ? svgG.innerHTML : '';
-      const fill = svgG?.getAttribute('fill') || 'rgba(238, 242, 255, 0.3)';
+      let fill = svgG?.getAttribute('fill') || 'rgba(238, 242, 255, 0.3)';
+      let fillOpacity = "1";
+
+      // svg2pdf.js no soporta bien hex con alpha (#RRGGBBAA), separar la opacidad
+      if (fill.startsWith('#') && fill.length === 9) {
+        fillOpacity = (parseInt(fill.substring(7, 9), 16) / 255).toFixed(2);
+        fill = fill.substring(0, 7);
+      }
+
       const stroke = svgG?.getAttribute('stroke') || '#c7d2fe';
       const strokeWidth = svgG?.getAttribute('stroke-width') || '2';
       const strokeDasharray = svgG?.getAttribute('stroke-dasharray') || '8 8';
       
-      const labelElement = node.querySelector('h3, span.text-xl');
-      const label = labelElement?.textContent || 'GRUPO';
-      const labelColor = (labelElement as HTMLElement)?.style?.color || '#312e81';
+      const label = storeNode?.data?.semanticLabel || 'GRUPO';
+      const labelColor = storeNode?.data?.color || '#312e81';
 
       if (innerSvg) {
-        // Envolvemos el SVG interno del cluster escalándolo a su tamaño
+        // Usar un nested <svg> con viewBox y preserveAspectRatio="none" igual que hace React Flow,
+        // esto evita deformaciones en los bordes procedurales (clusters).
         nodesSvgString += `
-          <g transform="translate(${x}, ${y}) scale(${w / 100}, ${h / 100})">
-            <g fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-dasharray="${strokeDasharray}" vector-effect="non-scaling-stroke">
+          <svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <g fill="${fill}" fill-opacity="${fillOpacity}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-dasharray="${strokeDasharray}" vector-effect="non-scaling-stroke">
               ${innerSvg}
             </g>
-          </g>
+          </svg>
         `;
       } else {
         nodesSvgString += `
-          <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-dasharray="${strokeDasharray}" rx="16" ry="16"></rect>
+          <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" fill-opacity="${fillOpacity}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-dasharray="${strokeDasharray}" rx="16" ry="16"></rect>
         `;
       }
       
@@ -115,12 +131,11 @@ async function urlToBase64(url: string): Promise<string> {
       const bg = innerDiv.style.backgroundColor || '#ffffff';
       const clipPath = innerDiv.style.clipPath || '';
       
-      // Buscar el nombre en la etiqueta blanca de abajo
-      const nameTag = node.querySelector('.bg-white.shadow-md') as HTMLElement;
-      const name = nameTag?.textContent || node.getAttribute('data-id') || '';
+      // Nombre e iniciales calculados de forma determinista usando el Store (mucho más robusto que raspar el DOM)
+      const name = storeNode?.data?.identity?.alias || storeNode?.data?.identity?.givenName || storeNode?.data?.semanticLabel || 'Nodo';
+      const initials = getInitials(name);
       
       const img = innerDiv.querySelector('img');
-      const fallbackSpan = innerDiv.querySelector('span');
 
       const cx = x + w / 2;
       const cy = y + h / 2;
@@ -161,13 +176,13 @@ async function urlToBase64(url: string): Promise<string> {
         } catch (e) {
           console.error('Failed to encode image for PDF', e);
         }
-      } else if (fallbackSpan) {
-        nodesSvgString += `<text x="${cx}" y="${cy}" fill="#ffffff" font-size="24" font-family="sans-serif" font-weight="bold" text-anchor="middle" dominant-baseline="central">${fallbackSpan.textContent}</text>`;
+      } else if (initials) {
+        nodesSvgString += `<text x="${cx}" y="${cy}" fill="#ffffff" font-size="24" font-family="sans-serif" font-weight="bold" text-anchor="middle" dominant-baseline="central">${initials}</text>`;
       }
 
       // Draw Name Label if exists
       if (name) {
-        nodesSvgString += `<rect x="${cx - (name.length * 4)}" y="${y + h + 8}" width="${name.length * 8}" height="24" fill="#ffffff" rx="12"></rect>`;
+        nodesSvgString += `<rect x="${cx - (name.length * 4)}" y="${y + h + 8}" width="${name.length * 8}" height="24" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" rx="12"></rect>`;
         nodesSvgString += `<text x="${cx}" y="${y + h + 24}" fill="#1f2937" font-size="12" font-family="sans-serif" font-weight="600" text-anchor="middle">${name}</text>`;
       }
     }
