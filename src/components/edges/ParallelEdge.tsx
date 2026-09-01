@@ -24,7 +24,8 @@ const ParallelEdge = ({
   const g1 = useStore(state => state.nodes.find(n => n.id === source)?.data?.biographicalAttributes?.gender);
   const g2 = useStore(state => state.nodes.find(n => n.id === target)?.data?.biographicalAttributes?.gender);
 
-  const semanticType = getSmartLabel(rawSemanticType, g1, g2);
+  const forceMasculine = data?.forceMasculine || false;
+  const semanticType = getSmartLabel(rawSemanticType, forceMasculine ? 'Hombre' : g1, g2);
 
   let path = '';
   let labelX = 0;

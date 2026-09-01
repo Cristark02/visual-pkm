@@ -21,7 +21,7 @@ import { useStore } from '../store/useStore';
 import IndividualNode from './nodes/IndividualNode';
 import ClusterNode from './nodes/ClusterNode';
 import ParallelEdge from './edges/ParallelEdge';
-import { getTaxonomyRelation, getSmartLabel } from '../config/taxonomy';
+import { getTaxonomyRelation } from '../config/taxonomy';
 
 const nodeTypes = {
   individual: IndividualNode,
@@ -191,7 +191,7 @@ export default function GraphCanvas() {
 
     // === HASHING ESPACIAL PARA ETIQUETAS QUE SE CRUZAN GEOMÉTRICAMENTE ===
     // Calcula aproximadamente el punto medio de cada arista para detectar choques entre uniones *diferentes*
-    const occupiedSpaces: { x: number, y: number, label: string, edge: RFEdge }[] = [];
+    const occupiedSpaces: { x: number, y: number, baseLabel: string, edge: RFEdge }[] = [];
 
     rfEdges.forEach(edge => {
       // Ignorar si ya está oculto (ej. uniones paralelas duplicadas)
@@ -214,22 +214,27 @@ export default function GraphCanvas() {
 
       const g1 = sNode.data?.biographicalAttributes?.gender;
       const g2 = tNode.data?.biographicalAttributes?.gender;
+      const hasMale = g1 === 'Hombre' || g2 === 'Hombre';
       
-      const finalSmartLabel = getSmartLabel(edge.data.semanticRelationshipType, g1, g2);
+      const baseLabel = edge.data.semanticRelationshipType;
 
-      // Buscar si ya hay otra etiqueta muy cerca (radio de ~45px)
-      const collision = occupiedSpaces.find(pos => Math.hypot(pos.x - mx, pos.y - my) < 45);
+      // Buscar si ya hay otra etiqueta muy cerca (aumentamos el radio a 85px para más holgura)
+      const collision = occupiedSpaces.find(pos => Math.hypot(pos.x - mx, pos.y - my) < 85);
 
       if (collision) {
-        if (collision.label === finalSmartLabel) {
-          // ¡Fusión! Si se cruzan y dicen lo mismo, ocultamos la segunda para no emborronar
+        if (collision.baseLabel === baseLabel) {
+          // ¡Fusión! Si se cruzan y son el mismo tipo base, ocultamos la segunda
           edge.data.isDuplicateLabel = true;
+          // Si esta nueva línea tiene hombres, forzamos a la que sobrevive a usar género masculino
+          if (hasMale) {
+            collision.edge.data.forceMasculine = true;
+          }
         } else {
           // Son distintas pero chocan en el espacio 2D. Aplicar un offset para apilarlas visualmente
           edge.data.collisionOffsetY = (collision.edge.data.collisionOffsetY || 0) + 14;
         }
       } else {
-        occupiedSpaces.push({ x: mx, y: my, label: finalSmartLabel, edge });
+        occupiedSpaces.push({ x: mx, y: my, baseLabel, edge });
       }
     });
 
