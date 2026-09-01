@@ -71,6 +71,25 @@ const ParallelEdge = ({
       labelX = 0.25 * sourceX + 0.5 * cx + 0.25 * targetX;
       labelY = 0.25 * sourceY + 0.5 * cy + 0.25 * targetY;
     }
+
+    // Lógica inteligente: Si los nodos están muy cerca, empujamos la etiqueta perpendicularmente 
+    // para buscar un "hueco" y que no se solape con los nodos ni sus nombres.
+    if (length < 240) {
+      let pushNx = nx;
+      let pushNy = ny;
+      
+      // Preferimos empujar hacia "arriba" (Y negativo) para evitar los nombres de los nodos que cuelgan hacia abajo.
+      // O si es una línea muy vertical, empujamos hacia la derecha o izquierda.
+      if (pushNy > 0.1) {
+        pushNx = -pushNx;
+        pushNy = -pushNy;
+      }
+
+      // Cuanto más cerca estén los nodos, más empujamos la etiqueta hacia afuera (hasta 45px)
+      const pushDistance = (1 - (length / 240)) * 45;
+      labelX += pushNx * pushDistance;
+      labelY += pushNy * pushDistance;
+    }
   }
 
   const edgeStyle = {
@@ -98,18 +117,13 @@ const ParallelEdge = ({
         <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -100%) translate(${labelX}px,${labelY - 8}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: 'all',
             zIndex: 1000,
             color: taxRule.color,
-            backgroundColor: 'rgba(255, 255, 255, 0.85)',
-            padding: '2px 6px',
-            borderRadius: '6px',
-            backdropFilter: 'blur(2px)',
-            border: `1px solid ${taxRule.color}40`,
-            textShadow: '0px 1px 2px rgba(255,255,255,1)'
+            textShadow: '0px 1px 3px rgba(255,255,255,1), 0px -1px 3px rgba(255,255,255,1), 1px 0px 3px rgba(255,255,255,1), -1px 0px 3px rgba(255,255,255,1)'
           }}
-          className="nodrag nopan text-[9px] font-black uppercase tracking-widest whitespace-nowrap shadow-sm"
+          className="nodrag nopan text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
         >
           {semanticType}
         </div>
