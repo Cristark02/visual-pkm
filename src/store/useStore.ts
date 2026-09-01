@@ -69,7 +69,7 @@ export const useStore = create<PKMState>((set) => ({
       let maxY = -Infinity;
       state.nodes.forEach(n => {
         const y = n.data.visualPosition?.y || 0;
-        const h = n.data.visualDimensions?.height || (n.type === 'cluster' ? 400 : 80);
+        const h = n.data.visualDimensions?.height || (n.type === 'cluster' ? 800 : 80);
         if (y + h > maxY) maxY = y + h;
       });
       if (maxY === -Infinity) maxY = 0;
@@ -81,15 +81,13 @@ export const useStore = create<PKMState>((set) => ({
       type,
       data: type === 'individual' 
         ? { identity: { givenName: isFirst ? 'Tú' : 'Nueva', familyName: isFirst ? '' : 'Persona' }, biographicalAttributes: { shape: 'circle' }, historicalNotes: '' }
-        : { semanticLabel: 'Nuevo Grupo', historicalNotes: '', visualPosition }
+        : { semanticLabel: 'Nuevo Grupo', historicalNotes: '', visualPosition, visualDimensions: { width: 800, height: 800 } }
     };
     return { nodes: [...state.nodes, newNode], selectedEntityId: id, selectedEntityType: 'node' };
   }),
 
   addEdge: (source, target) => set((state) => {
-    // Evitar aristas duplicadas
-    if (state.edges.some(e => e.sourceNodeId === source && e.targetNodeId === target)) return state;
-    
+    // Permitimos múltiples aristas entre las mismas personas
     const id = `edge-${crypto.randomUUID()}`;
     const newEdge: EdgeModel = {
       id,

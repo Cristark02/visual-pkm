@@ -52,10 +52,10 @@ const determineShape = (nodeId: string, edges: any[]) => {
 };
 
 const checkOverlap = (n1: RFNode, n2: RFNode) => {
-  const w1 = n1.data?.visualDimensions?.width || 400;
-  const h1 = n1.data?.visualDimensions?.height || 400;
-  const w2 = n2.data?.visualDimensions?.width || 400;
-  const h2 = n2.data?.visualDimensions?.height || 400;
+  const w1 = n1.data?.visualDimensions?.width || 800;
+  const h1 = n1.data?.visualDimensions?.height || 800;
+  const w2 = n2.data?.visualDimensions?.width || 800;
+  const h2 = n2.data?.visualDimensions?.height || 800;
   
   return (
     n1.position.x < n2.position.x + w2 &&
@@ -68,8 +68,8 @@ const checkOverlap = (n1: RFNode, n2: RFNode) => {
 const isInside = (individual: RFNode, cluster: RFNode) => {
   const cx = individual.position.x + 40;
   const cy = individual.position.y + 40;
-  const cw = cluster.data?.visualDimensions?.width || 400;
-  const ch = cluster.data?.visualDimensions?.height || 400;
+  const cw = cluster.data?.visualDimensions?.width || 800;
+  const ch = cluster.data?.visualDimensions?.height || 800;
   
   return (
     cx >= cluster.position.x &&
@@ -119,8 +119,8 @@ export default function GraphCanvas() {
       }
 
       const isCluster = n.type === 'cluster';
-      const w = n.data.visualDimensions?.width || (isCluster ? 400 : 80);
-      const h = n.data.visualDimensions?.height || (isCluster ? 400 : 80);
+      const w = n.data.visualDimensions?.width || (isCluster ? 800 : 80);
+      const h = n.data.visualDimensions?.height || (isCluster ? 800 : 80);
 
       return {
         id: n.id,

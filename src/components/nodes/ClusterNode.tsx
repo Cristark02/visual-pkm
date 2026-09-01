@@ -26,16 +26,16 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   const shape = data.biographicalAttributes?.shape || 'square';
   
   const svgPaths: Record<string, string> = {
-    circle: '<ellipse cx="50" cy="50" rx="48" ry="48" />',
-    square: '<rect x="2" y="2" width="96" height="96" rx="8" />',
-    star: '<polygon points="50,2 65,35 98,40 75,65 85,98 50,80 15,98 25,65 2,40 35,35" />',
-    heart: '<polygon points="50,98 10,60 2,30 15,2 50,25 85,2 98,30 90,60" />',
-    hexagon: '<polygon points="25,2 75,2 98,50 75,98 25,98 2,50" />',
-    diamond: '<polygon points="50,2 98,50 50,98 2,50" />',
-    triangle: '<polygon points="50,2 98,98 2,98" />',
-    pentagon: '<polygon points="50,2 98,38 81,98 19,98 2,38" />',
-    octagon: '<polygon points="30,2 70,2 98,30 98,70 70,98 30,98 2,70 2,30" />',
-    shield: '<polygon points="2,2 98,2 98,75 50,98 2,75" />'
+    circle: '<ellipse cx="50" cy="50" rx="48" ry="48" vector-effect="non-scaling-stroke" />',
+    square: '<rect x="2" y="2" width="96" height="96" rx="8" vector-effect="non-scaling-stroke" />',
+    star: '<polygon points="50,2 65,35 98,40 75,65 85,98 50,80 15,98 25,65 2,40 35,35" vector-effect="non-scaling-stroke" />',
+    heart: '<polygon points="50,98 10,60 2,30 15,2 50,25 85,2 98,30 90,60" vector-effect="non-scaling-stroke" />',
+    hexagon: '<polygon points="25,2 75,2 98,50 75,98 25,98 2,50" vector-effect="non-scaling-stroke" />',
+    diamond: '<polygon points="50,2 98,50 50,98 2,50" vector-effect="non-scaling-stroke" />',
+    triangle: '<polygon points="50,2 98,98 2,98" vector-effect="non-scaling-stroke" />',
+    pentagon: '<polygon points="50,2 98,38 81,98 19,98 2,38" vector-effect="non-scaling-stroke" />',
+    octagon: '<polygon points="30,2 70,2 98,30 98,70 70,98 30,98 2,70 2,30" vector-effect="non-scaling-stroke" />',
+    shield: '<polygon points="2,2 98,2 98,75 50,98 2,75" vector-effect="non-scaling-stroke" />'
   };
 
   const svgInner = svgPaths[shape] || svgPaths.square;
@@ -93,7 +93,6 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
             stroke={data.color || (selected ? '#818cf8' : '#c7d2fe')}
             strokeWidth={selected ? 4 : 2}
             strokeDasharray={data.isChainLinked ? "none" : "8 8"}
-            vectorEffect="non-scaling-stroke"
             className="transition-all duration-300"
           />
         </svg>
