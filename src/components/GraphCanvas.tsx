@@ -151,6 +151,8 @@ export default function GraphCanvas() {
     const rfEdges: RFEdge[] = [];
     
     edgeGroups.forEach((group) => {
+      const seenLabels = new Set<string>();
+
       group.forEach((e, index) => {
         const isBidirectional = group.some(ge => ge.sourceNodeId === e.targetNodeId && ge.targetNodeId === e.sourceNodeId);
         let offsetIndex = index;
@@ -163,7 +165,11 @@ export default function GraphCanvas() {
           offsetIndex = index === 0 ? 0 : Math.ceil(index / 2) * (index % 2 === 0 ? 1 : -1);
         }
 
-        const taxRule = getTaxonomyRelation(e.semanticRelationshipType || '');
+        const semanticType = e.semanticRelationshipType || 'Conexión';
+        const isDuplicateLabel = seenLabels.has(semanticType);
+        seenLabels.add(semanticType);
+
+        const taxRule = getTaxonomyRelation(semanticType);
 
         rfEdges.push({
           id: e.id,
@@ -174,9 +180,10 @@ export default function GraphCanvas() {
           markerEnd: taxRule.arrow ? { type: MarkerType.ArrowClosed, color: taxRule.color } : undefined,
           data: {
             ...e.data,
-            semanticRelationshipType: e.semanticRelationshipType,
+            semanticRelationshipType: semanticType,
             offsetIndex,
-            isZigZag: e.semanticRelationshipType === 'Conflicto'
+            isZigZag: semanticType === 'Conflicto',
+            isDuplicateLabel
           }
         });
       });

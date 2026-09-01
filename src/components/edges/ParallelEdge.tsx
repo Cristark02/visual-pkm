@@ -140,6 +140,13 @@ const ParallelEdge = ({
     }
   }
 
+  // Si hay varios nombres en la misma ruta, los apilamos verticalmente
+  if (offsetIndex !== 0) {
+    labelY += offsetIndex * 14;
+  }
+
+  const isDuplicateLabel = data?.isDuplicateLabel || false;
+
   const edgeStyle = {
     ...style,
     stroke: taxRule.color,
@@ -161,21 +168,23 @@ const ParallelEdge = ({
         markerEnd={markerEnd} 
         style={edgeStyle} 
       />
-      <EdgeLabelRenderer>
-        <div
-          style={{
-            position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            pointerEvents: 'all',
-            zIndex: 1000,
-            color: taxRule.color,
-            textShadow: '0px 1px 3px rgba(255,255,255,1), 0px -1px 3px rgba(255,255,255,1), 1px 0px 3px rgba(255,255,255,1), -1px 0px 3px rgba(255,255,255,1)'
-          }}
-          className="nodrag nopan text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
-        >
-          {semanticType}
-        </div>
-      </EdgeLabelRenderer>
+      {!isDuplicateLabel && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+              pointerEvents: 'all',
+              zIndex: 1000,
+              color: taxRule.color,
+              textShadow: '0px 1px 3px rgba(255,255,255,1), 0px -1px 3px rgba(255,255,255,1), 1px 0px 3px rgba(255,255,255,1), -1px 0px 3px rgba(255,255,255,1)'
+            }}
+            className="nodrag nopan text-[10px] font-black uppercase tracking-widest whitespace-nowrap"
+          >
+            {semanticType}
+          </div>
+        </EdgeLabelRenderer>
+      )}
     </>
   );
 };
