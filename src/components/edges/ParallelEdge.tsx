@@ -100,10 +100,16 @@ const ParallelEdge = ({
             position: 'absolute',
             transform: `translate(-50%, -100%) translate(${labelX}px,${labelY - 8}px)`,
             pointerEvents: 'all',
+            zIndex: 1000,
             color: taxRule.color,
-            textShadow: '0px 1px 4px rgba(255,255,255,1), 0px -1px 4px rgba(255,255,255,1), 1px 0px 4px rgba(255,255,255,1), -1px 0px 4px rgba(255,255,255,1)'
+            backgroundColor: 'rgba(255, 255, 255, 0.85)',
+            padding: '2px 6px',
+            borderRadius: '6px',
+            backdropFilter: 'blur(2px)',
+            border: `1px solid ${taxRule.color}40`,
+            textShadow: '0px 1px 2px rgba(255,255,255,1)'
           }}
-          className="nodrag nopan text-[9px] font-black uppercase tracking-widest whitespace-nowrap"
+          className="nodrag nopan text-[9px] font-black uppercase tracking-widest whitespace-nowrap shadow-sm"
         >
           {semanticType}
         </div>
