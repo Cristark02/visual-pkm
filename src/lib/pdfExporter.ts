@@ -21,6 +21,15 @@ function getInitials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+function stringToColor(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+  return '#' + '00000'.substring(0, 6 - c.length) + c;
+}
+
+const FONT_FAMILY = "Arial, Helvetica, sans-serif";
+
 /**
  * Transmuta el grafo de React Flow (HTML + SVG) a un documento SVG monolítico
  * puro, sin foreignObjects, para exportarlo a PDF en alta fidelidad.
@@ -58,7 +67,9 @@ export async function exportToVectorPDF() {
     const y = parseFloat(match[2]);
     const color = label.style.color || '#3b82f6';
 
-    edgeLabelsSvgString += `<text x="${x}" y="${y}" fill="${color}" font-size="10" font-family="sans-serif" font-weight="900" text-anchor="middle" dominant-baseline="central" letter-spacing="1.5">${text}</text>`;
+    // Generar halo blanco para legibilidad y luego el texto
+    edgeLabelsSvgString += `<text x="${x}" y="${y}" fill="white" stroke="white" stroke-width="4" stroke-linejoin="round" font-size="10" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" dominant-baseline="central" letter-spacing="1.5">${text}</text>`;
+    edgeLabelsSvgString += `<text x="${x}" y="${y}" fill="${color}" font-size="10" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" dominant-baseline="central" letter-spacing="1.5">${text}</text>`;
   }
 
   // 2. Extraer los Nodos HTML y transmutarlos a SVG primitivo
@@ -107,8 +118,6 @@ export async function exportToVectorPDF() {
       const labelColor = storeNode?.data?.color || '#312e81';
 
       if (innerSvg) {
-        // Usar un nested <svg> con viewBox y preserveAspectRatio="none" igual que hace React Flow,
-        // esto evita deformaciones en los bordes procedurales (clusters).
         nodesSvgString += `
           <svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 100 100" preserveAspectRatio="none">
             <g fill="${fill}" fill-opacity="${fillOpacity}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-dasharray="${strokeDasharray}" vector-effect="non-scaling-stroke">
@@ -122,18 +131,26 @@ export async function exportToVectorPDF() {
         `;
       }
       
-      nodesSvgString += `<text x="${x + w/2}" y="${y + h/2}" fill="${labelColor}" font-size="20" font-family="sans-serif" font-weight="900" text-anchor="middle" dominant-baseline="central" opacity="0.6">${label}</text>`;
+      nodesSvgString += `<text x="${x + w/2}" y="${y + h/2}" fill="${labelColor}" font-size="20" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" dominant-baseline="central" opacity="0.6">${label}</text>`;
     } else {
       // Dibujar IndividualNode
       const innerDiv = node.querySelector('div > div') as HTMLElement;
       if (!innerDiv) continue;
 
-      const bg = innerDiv.style.backgroundColor || '#ffffff';
       const clipPath = innerDiv.style.clipPath || '';
       
-      // Nombre e iniciales calculados de forma determinista usando el Store (mucho más robusto que raspar el DOM)
-      const name = storeNode?.data?.identity?.alias || storeNode?.data?.identity?.givenName || storeNode?.data?.semanticLabel || 'Nodo';
+      const givenName = storeNode?.data?.identity?.givenName || '';
+      const familyName = storeNode?.data?.identity?.familyName || '';
+      const fullName = [givenName, familyName].filter(Boolean).join(' ');
+      const alias = storeNode?.data?.identity?.alias || '';
+      
+      const name = alias || fullName || storeNode?.data?.semanticLabel || 'Nodo';
       const initials = getInitials(name);
+      
+      const bgColor = stringToColor(fullName || alias || 'X');
+      const nodeColor = storeNode?.data?.color;
+      const borderColor = nodeColor || '#e5e7eb';
+      const textColor = nodeColor || '#374151';
       
       const img = innerDiv.querySelector('img');
 
@@ -145,16 +162,16 @@ export async function exportToVectorPDF() {
 
       if (clipPath.includes('polygon')) {
         // Star fallback
-        shapeSvg = `<polygon points="${x+w/2},${y} ${x+w},${y+h} ${x},${y+h}" fill="${bg}" stroke="#9ca3af" stroke-width="2" />`;
+        shapeSvg = `<polygon points="${x+w/2},${y} ${x+w},${y+h} ${x},${y+h}" fill="${bgColor}" stroke="${borderColor}" stroke-width="4" />`;
       } else if (clipPath.includes('path')) {
         // Heart fallback
-        shapeSvg = `<path d="M${cx},${y+h*0.3} C${cx-w/2},${y-h*0.2} ${x-w/4},${y+h*0.8} ${cx},${y+h} C${x+w+w/4},${y+h*0.8} ${cx+w/2},${y-h*0.2} ${cx},${y+h*0.3} Z" fill="${bg}" stroke="#9ca3af" stroke-width="2" />`;
+        shapeSvg = `<path d="M${cx},${y+h*0.3} C${cx-w/2},${y-h*0.2} ${x-w/4},${y+h*0.8} ${cx},${y+h} C${x+w+w/4},${y+h*0.8} ${cx+w/2},${y-h*0.2} ${cx},${y+h*0.3} Z" fill="${bgColor}" stroke="${borderColor}" stroke-width="4" />`;
       } else if (innerDiv.className.includes('rounded-xl') || clipPath.includes('rect')) {
         // Square
-        shapeSvg = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${bg}" stroke="#9ca3af" stroke-width="2" rx="12" ry="12"></rect>`;
+        shapeSvg = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${bgColor}" stroke="${borderColor}" stroke-width="4" rx="12" ry="12"></rect>`;
       } else {
         // Circle (Default)
-        shapeSvg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${bg}" stroke="#9ca3af" stroke-width="2"></circle>`;
+        shapeSvg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${bgColor}" stroke="${borderColor}" stroke-width="4"></circle>`;
       }
 
       nodesSvgString += shapeSvg;
@@ -163,8 +180,11 @@ export async function exportToVectorPDF() {
       if (img && img.src) {
         try {
           const b64 = await urlToBase64(img.src);
-          // Usamos un ID único para el clip-path del nodo
           const clipId = `clip-${Math.random().toString(36).substr(2, 9)}`;
+          
+          // Background for transparent images
+          nodesSvgString += shapeSvg.replace(`fill="${bgColor}"`, `fill="#ffffff"`);
+          
           nodesSvgString += `
             <defs>
               <clipPath id="${clipId}">
@@ -177,13 +197,17 @@ export async function exportToVectorPDF() {
           console.error('Failed to encode image for PDF', e);
         }
       } else if (initials) {
-        nodesSvgString += `<text x="${cx}" y="${cy}" fill="#ffffff" font-size="24" font-family="sans-serif" font-weight="bold" text-anchor="middle" dominant-baseline="central">${initials}</text>`;
+        nodesSvgString += `<text x="${cx}" y="${cy}" fill="#ffffff" font-size="24" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" dominant-baseline="central">${initials}</text>`;
       }
 
       // Draw Name Label if exists
       if (name) {
-        nodesSvgString += `<rect x="${cx - (name.length * 4)}" y="${y + h + 8}" width="${name.length * 8}" height="24" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" rx="12"></rect>`;
-        nodesSvgString += `<text x="${cx}" y="${y + h + 24}" fill="#1f2937" font-size="12" font-family="sans-serif" font-weight="600" text-anchor="middle">${name}</text>`;
+        const charWidth = 6.5; // Aproximación
+        const textWidth = name.length * charWidth;
+        const rectWidth = Math.max(textWidth + 16, 40);
+        
+        nodesSvgString += `<rect x="${cx - (rectWidth / 2)}" y="${y + h + 6}" width="${rectWidth}" height="22" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" rx="10" filter="url(#drop-shadow)"></rect>`;
+        nodesSvgString += `<text x="${cx}" y="${y + h + 21}" fill="${textColor}" font-size="11" font-family="${FONT_FAMILY}" font-weight="bold" text-anchor="middle">${name}</text>`;
       }
     }
   }
@@ -200,6 +224,11 @@ export async function exportToVectorPDF() {
   // Construir SVG Monolítico
   const monolithicSvg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${totalWidth} ${totalHeight}" width="${totalWidth}" height="${totalHeight}">
+      <defs>
+        <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.1" />
+        </filter>
+      </defs>
       <rect x="${minX}" y="${minY}" width="${totalWidth}" height="${totalHeight}" fill="#f9fafb"></rect>
       <g id="edges-layer">${edgesGroupString}</g>
       <g id="edge-labels-layer">${edgeLabelsSvgString}</g>
