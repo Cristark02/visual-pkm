@@ -118,13 +118,49 @@ export async function exportToVectorPDF() {
       const labelColor = storeNode?.data?.color || '#312e81';
 
       if (innerSvg) {
-        nodesSvgString += `
-          <svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <g fill="${fill}" fill-opacity="${fillOpacity}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-dasharray="${strokeDasharray}" vector-effect="non-scaling-stroke">
-              ${innerSvg}
+        // En lugar de usar viewBox y escalar (lo cual svg2pdf falla al aplicar vector-effect="non-scaling-stroke"
+        // engordando enormemente los bordes y los dashes), mapeamos las primitivas a coordenadas absolutas.
+        const shapeDoc = new DOMParser().parseFromString(`<svg>${innerSvg}</svg>`, 'image/svg+xml');
+        const shape = shapeDoc.querySelector('ellipse, rect, polygon');
+        let newShapeSvg = '';
+
+        if (shape) {
+          if (shape.tagName === 'ellipse') {
+             const cx = x + (parseFloat(shape.getAttribute('cx')||'50') / 100) * w;
+             const cy = y + (parseFloat(shape.getAttribute('cy')||'50') / 100) * h;
+             const rx = (parseFloat(shape.getAttribute('rx')||'50') / 100) * w;
+             const ry = (parseFloat(shape.getAttribute('ry')||'50') / 100) * h;
+             newShapeSvg = `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" />`;
+          } else if (shape.tagName === 'rect') {
+             const rxAttr = shape.getAttribute('rx');
+             const nx = x + (parseFloat(shape.getAttribute('x')||'0') / 100) * w;
+             const ny = y + (parseFloat(shape.getAttribute('y')||'0') / 100) * h;
+             const nw = (parseFloat(shape.getAttribute('width')||'100') / 100) * w;
+             const nh = (parseFloat(shape.getAttribute('height')||'100') / 100) * h;
+             const corner = rxAttr ? parseFloat(rxAttr) * 2 : 16;
+             newShapeSvg = `<rect x="${nx}" y="${ny}" width="${nw}" height="${nh}" rx="${corner}" />`;
+          } else if (shape.tagName === 'polygon') {
+             const points = shape.getAttribute('points') || '';
+             const pairs = points.trim().split(/[\s,]+/);
+             const mapped = [];
+             for (let j = 0; j < pairs.length; j+=2) {
+                 const px = parseFloat(pairs[j]);
+                 const py = parseFloat(pairs[j+1]);
+                 if (!isNaN(px) && !isNaN(py)) {
+                     mapped.push(`${x + (px/100)*w},${y + (py/100)*h}`);
+                 }
+             }
+             newShapeSvg = `<polygon points="${mapped.join(' ')}" />`;
+          }
+        }
+
+        if (newShapeSvg) {
+          nodesSvgString += `
+            <g fill="${fill}" fill-opacity="${fillOpacity}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-dasharray="${strokeDasharray}">
+              ${newShapeSvg}
             </g>
-          </svg>
-        `;
+          `;
+        }
       } else {
         nodesSvgString += `
           <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" fill-opacity="${fillOpacity}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-dasharray="${strokeDasharray}" rx="16" ry="16"></rect>
