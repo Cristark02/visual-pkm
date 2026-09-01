@@ -122,19 +122,22 @@ function App() {
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    try {
-                      const JSZip = (await import('jszip')).default;
-                      const zip = new JSZip();
-                      const loadedZip = await zip.loadAsync(file);
-                      let stateFile = loadedZip.file('state.json') || loadedZip.file('config/state.json');
-                      if (stateFile) {
-                        const stateText = await stateFile.async('string');
-                        const stateData = JSON.parse(stateText);
-                        loadDocument(stateData);
-                      } else {
-                        setError("El archivo ZIP no contiene un Social-Link válido (falta state.json)");
-                      }
-                    } catch (err) {
+                      try {
+                        const JSZip = (await import('jszip')).default;
+                        const zip = new JSZip();
+                        const loadedZip = await zip.loadAsync(file);
+                        
+                        // Buscar el state.json en cualquier nivel de carpeta dentro del zip
+                        const stateFiles = loadedZip.filter((relativePath, file) => !file.dir && relativePath.endsWith('state.json'));
+                        
+                        if (stateFiles.length > 0) {
+                          const stateText = await stateFiles[0].async('string');
+                          const stateData = JSON.parse(stateText);
+                          loadDocument(stateData);
+                        } else {
+                          setError("El archivo ZIP no contiene un Social-Link válido (falta state.json)");
+                        }
+                      } catch (err) {
                       console.error(err);
                       setError("Error al leer el archivo ZIP");
                     }

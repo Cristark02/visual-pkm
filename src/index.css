@@ -8,3 +8,6 @@ html, body, #root {
   overflow: hidden;
   background-color: #f9fafb;
 }
+
+.react-flow__edgelabel-renderer { z-index: 1000 !important; }
+
