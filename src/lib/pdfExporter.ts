@@ -69,8 +69,8 @@ export async function exportToVectorPDF() {
 
     // Generar halo blanco para legibilidad y luego el texto
     // Desplazamos Y ligeramente porque svg2pdf ignora dominant-baseline
-    edgeLabelsSvgString += `<text x="${x}" y="${y + 4.2}" fill="white" stroke="white" stroke-width="4" stroke-linejoin="round" font-size="13" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" letter-spacing="1.5">${text}</text>`;
-    edgeLabelsSvgString += `<text x="${x}" y="${y + 4.2}" fill="${color}" font-size="13" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" letter-spacing="1.5">${text}</text>`;
+    edgeLabelsSvgString += `<text x="${x}" y="${y + 4.2}" fill="white" stroke="white" stroke-width="4" stroke-linejoin="round" font-size="15" font-family="${FONT_FAMILY}" font-weight="bold" text-anchor="middle" letter-spacing="1.5">${text}</text>`;
+    edgeLabelsSvgString += `<text x="${x}" y="${y + 4.2}" fill="${color}" font-size="15" font-family="${FONT_FAMILY}" font-weight="bold" text-anchor="middle" letter-spacing="1.5">${text}</text>`;
   }
 
   // 2. Extraer los Nodos HTML y transmutarlos a SVG primitivo
@@ -169,7 +169,7 @@ export async function exportToVectorPDF() {
       }
       
       // Ajuste manual de y + h/2 + 10 para centrar verticalmente al fallar dominant-baseline
-      nodesSvgString += `<text x="${x + w/2}" y="${y + h/2 + 10}" fill="${labelColor}" font-size="34" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" opacity="0.6">${label}</text>`;
+      nodesSvgString += `<text x="${x + w/2}" y="${y + h/2 + 10}" fill="${labelColor}" font-size="44" font-family="${FONT_FAMILY}" font-weight="bold" text-anchor="middle" opacity="0.6">${label}</text>`;
     } else {
       // Dibujar IndividualNode
       const innerDiv = node.querySelector('div > div') as HTMLElement;
@@ -236,7 +236,7 @@ export async function exportToVectorPDF() {
         }
       } else if (initials) {
         // Ajuste manual (cy + 8.4) al fallar dominant-baseline
-        nodesSvgString += `<text x="${cx}" y="${cy + 8.4}" fill="#ffffff" font-size="24" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle">${initials}</text>`;
+        nodesSvgString += `<text x="${cx}" y="${cy + 8.4}" fill="#ffffff" font-size="24" font-family="${FONT_FAMILY}" font-weight="bold" text-anchor="middle">${initials}</text>`;
       }
 
       // Draw Name Label if exists
