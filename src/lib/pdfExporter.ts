@@ -28,7 +28,7 @@ function stringToColor(str: string) {
   return '#' + '00000'.substring(0, 6 - c.length) + c;
 }
 
-const FONT_FAMILY = "Arial, Helvetica, sans-serif";
+const FONT_FAMILY = "helvetica";
 
 /**
  * Transmuta el grafo de React Flow (HTML + SVG) a un documento SVG monolítico
@@ -68,8 +68,9 @@ export async function exportToVectorPDF() {
     const color = label.style.color || '#3b82f6';
 
     // Generar halo blanco para legibilidad y luego el texto
-    edgeLabelsSvgString += `<text x="${x}" y="${y}" fill="white" stroke="white" stroke-width="4" stroke-linejoin="round" font-size="10" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" dominant-baseline="central" letter-spacing="1.5">${text}</text>`;
-    edgeLabelsSvgString += `<text x="${x}" y="${y}" fill="${color}" font-size="10" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" dominant-baseline="central" letter-spacing="1.5">${text}</text>`;
+    // Desplazamos Y ligeramente porque svg2pdf ignora dominant-baseline
+    edgeLabelsSvgString += `<text x="${x}" y="${y + 4.2}" fill="white" stroke="white" stroke-width="4" stroke-linejoin="round" font-size="13" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" letter-spacing="1.5">${text}</text>`;
+    edgeLabelsSvgString += `<text x="${x}" y="${y + 4.2}" fill="${color}" font-size="13" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" letter-spacing="1.5">${text}</text>`;
   }
 
   // 2. Extraer los Nodos HTML y transmutarlos a SVG primitivo
@@ -167,7 +168,8 @@ export async function exportToVectorPDF() {
         `;
       }
       
-      nodesSvgString += `<text x="${x + w/2}" y="${y + h/2}" fill="${labelColor}" font-size="20" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" dominant-baseline="central" opacity="0.6">${label}</text>`;
+      // Ajuste manual de y + h/2 + 10 para centrar verticalmente al fallar dominant-baseline
+      nodesSvgString += `<text x="${x + w/2}" y="${y + h/2 + 10}" fill="${labelColor}" font-size="34" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" opacity="0.6">${label}</text>`;
     } else {
       // Dibujar IndividualNode
       const innerDiv = node.querySelector('div > div') as HTMLElement;
@@ -233,7 +235,8 @@ export async function exportToVectorPDF() {
           console.error('Failed to encode image for PDF', e);
         }
       } else if (initials) {
-        nodesSvgString += `<text x="${cx}" y="${cy}" fill="#ffffff" font-size="24" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle" dominant-baseline="central">${initials}</text>`;
+        // Ajuste manual (cy + 8.4) al fallar dominant-baseline
+        nodesSvgString += `<text x="${cx}" y="${cy + 8.4}" fill="#ffffff" font-size="24" font-family="${FONT_FAMILY}" font-weight="900" text-anchor="middle">${initials}</text>`;
       }
 
       // Draw Name Label if exists
