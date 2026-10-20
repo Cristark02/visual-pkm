@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import ReactFlow, { 
   Background, 
   Controls, 
@@ -6,7 +6,8 @@ import ReactFlow, {
   applyNodeChanges,
   applyEdgeChanges,
   ConnectionMode,
-  MarkerType
+  MarkerType,
+  SelectionMode
 } from 'reactflow';
 import type {
   Connection,
@@ -21,7 +22,7 @@ import { useStore } from '../store/useStore';
 import IndividualNode from './nodes/IndividualNode';
 import ClusterNode from './nodes/ClusterNode';
 import ParallelEdge from './edges/ParallelEdge';
-import { getTaxonomyRelation } from '../config/taxonomy';
+import { getTaxonomyRelation, DEFAULT_TAXONOMY } from '../config/taxonomy';
 
 const nodeTypes = {
   individual: IndividualNode,
@@ -65,22 +66,64 @@ const checkOverlap = (n1: RFNode, n2: RFNode) => {
   );
 };
 
+function isPointInPolygon(px: number, py: number, vertices: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+    const xi = vertices[i][0], yi = vertices[i][1];
+    const xj = vertices[j][0], yj = vertices[j][1];
+    const intersect = ((yi > py) !== (yj > py)) && (px < ((xj - xi) * (py - yi)) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+const POLYGON_SHAPES: Record<string, [number, number][]> = {
+  star: [[50,2],[65,35],[98,40],[75,65],[85,98],[50,80],[15,98],[25,65],[2,40],[35,35]],
+  heart: [[50,98],[10,60],[2,30],[15,2],[50,25],[85,2],[98,30],[90,60]],
+  hexagon: [[25,2],[75,2],[98,50],[75,98],[25,98],[2,50]],
+  diamond: [[50,2],[98,50],[50,98],[2,50]],
+  triangle: [[50,2],[98,98],[2,98]],
+  pentagon: [[50,2],[98,38],[81,98],[19,98],[2,38]],
+  octagon: [[30,2],[70,2],[98,30],[98,70],[70,98],[30,98],[2,70],[2,30]],
+  shield: [[2,2],[98,2],[98,75],[50,98],[2,75]]
+};
+
 const isInside = (individual: RFNode, cluster: RFNode) => {
   const cx = individual.position.x + 40;
   const cy = individual.position.y + 40;
   const cw = cluster.data?.visualDimensions?.width || 800;
   const ch = cluster.data?.visualDimensions?.height || 800;
+  const clX = cluster.position.x;
+  const clY = cluster.position.y;
   
-  return (
-    cx >= cluster.position.x &&
-    cx <= cluster.position.x + cw &&
-    cy >= cluster.position.y &&
-    cy <= cluster.position.y + ch
-  );
+  // Bounding box pre-check
+  if (cx < clX || cx > clX + cw || cy < clY || cy > clY + ch) {
+    return false;
+  }
+
+  const shape = cluster.data?.biographicalAttributes?.shape || 'square';
+  if (shape === 'circle') {
+    const rx = cw / 2;
+    const ry = ch / 2;
+    const centerX = clX + rx;
+    const centerY = clY + ry;
+    const normalized = Math.pow((cx - centerX) / rx, 2) + Math.pow((cy - centerY) / ry, 2);
+    return normalized <= 1.0;
+  }
+
+  if (POLYGON_SHAPES[shape]) {
+    const absVertices: [number, number][] = POLYGON_SHAPES[shape].map(([px, py]) => [
+      clX + (px / 100) * cw,
+      clY + (py / 100) * ch
+    ]);
+    return isPointInPolygon(cx, cy, absVertices);
+  }
+
+  return true;
 };
 
 export default function GraphCanvas() {
-  const { nodes: storeNodes, edges: storeEdges, setSelectedEntity, addEdge: addStoreEdge, updateNodeData } = useStore();
+  const { nodes: storeNodes, edges: storeEdges, setSelectedEntity, addEdge: addStoreEdge, updateNodeData, activeFilterCategories } = useStore();
   
   const [nodes, setNodes] = useState<RFNode[]>([]);
   const [edges, setEdges] = useState<RFEdge[]>([]);
@@ -89,6 +132,30 @@ export default function GraphCanvas() {
   
   // Ref para capturar el estado inicial de un drag
   const dragContext = useRef<{ active: boolean, clusterIds: string[], memberIds: string[] }>({ active: false, clusterIds: [], memberIds: [] });
+
+  const allowedRelIds = useMemo(() => {
+    if (activeFilterCategories.length === 0) return null;
+    const ids = new Set<string>();
+    DEFAULT_TAXONOMY.forEach(cat => {
+      if (activeFilterCategories.includes(cat.name)) {
+        cat.relationships.forEach(r => ids.add(r.id.toLowerCase()));
+      }
+    });
+    return ids;
+  }, [activeFilterCategories]);
+
+  const connectedNodeIds = useMemo(() => {
+    if (!allowedRelIds) return null;
+    const ids = new Set<string>();
+    storeEdges.forEach(e => {
+      const rel = (e.semanticRelationshipType || '').toLowerCase();
+      if (allowedRelIds.has(rel)) {
+        ids.add(e.sourceNodeId);
+        ids.add(e.targetNodeId);
+      }
+    });
+    return ids;
+  }, [allowedRelIds, storeEdges]);
 
   useEffect(() => {
     const rfNodes: RFNode[] = storeNodes.map((n, i) => {
@@ -122,11 +189,16 @@ export default function GraphCanvas() {
       const w = n.data.visualDimensions?.width || (isCluster ? 800 : 80);
       const h = n.data.visualDimensions?.height || (isCluster ? 800 : 80);
 
+      const isFilteredOut = connectedNodeIds !== null && !connectedNodeIds.has(n.id) && n.type === 'individual';
+      const nodeStyle = isCluster 
+        ? { width: w, height: h, zIndex: -1 } 
+        : { width: w, height: h, zIndex: 1, opacity: isFilteredOut ? 0.25 : 1, transition: 'opacity 0.25s ease' };
+
       return {
         id: n.id,
         type: n.type,
         position: { x, y },
-        style: isCluster ? { width: w, height: h, zIndex: -1 } : { width: w, height: h, zIndex: 1 },
+        style: nodeStyle,
         data: {
           ...n.data,
           visualDimensions: { width: w, height: h },
@@ -138,7 +210,7 @@ export default function GraphCanvas() {
     
     setNodes(rfNodes);
     nodesRef.current = rfNodes;
-  }, [storeNodes, storeEdges]);
+  }, [storeNodes, storeEdges, connectedNodeIds]);
 
   useEffect(() => {
     const edgeGroups = new Map<string, typeof storeEdges>();
@@ -170,6 +242,27 @@ export default function GraphCanvas() {
         seenLabels.add(semanticType);
 
         const taxRule = getTaxonomyRelation(semanticType);
+        const arrowDir = e.data?.arrowDirection;
+        let markerEnd = undefined;
+        let markerStart = undefined;
+
+        if (arrowDir === 'none') {
+          markerEnd = undefined;
+          markerStart = undefined;
+        } else if (arrowDir === 'forward') {
+          markerEnd = { type: MarkerType.ArrowClosed, color: taxRule.color };
+          markerStart = undefined;
+        } else if (arrowDir === 'backward') {
+          markerEnd = undefined;
+          markerStart = { type: MarkerType.ArrowClosed, color: taxRule.color };
+        } else if (arrowDir === 'mutual') {
+          markerEnd = { type: MarkerType.ArrowClosed, color: taxRule.color };
+          markerStart = { type: MarkerType.ArrowClosed, color: taxRule.color };
+        } else {
+          markerEnd = taxRule.arrow ? { type: MarkerType.ArrowClosed, color: taxRule.color } : undefined;
+        }
+
+        const isEdgeFilteredOut = allowedRelIds !== null && !allowedRelIds.has(semanticType.toLowerCase());
 
         rfEdges.push({
           id: e.id,
@@ -177,7 +270,9 @@ export default function GraphCanvas() {
           target: e.targetNodeId,
           type: 'parallel',
           animated: false,
-          markerEnd: taxRule.arrow ? { type: MarkerType.ArrowClosed, color: taxRule.color } : undefined,
+          hidden: isEdgeFilteredOut,
+          markerStart,
+          markerEnd,
           data: {
             ...e.data,
             semanticRelationshipType: semanticType,
@@ -359,6 +454,8 @@ export default function GraphCanvas() {
   const onNodeDragStop = useCallback((_: React.MouseEvent, node: RFNode) => {
     const currentNodes = nodesRef.current;
 
+    useStore.getState().pushSnapshot();
+
     // Guardar posiciones de todos los que se hayan movido
     if (dragContext.current.active) {
       const movedIds = new Set<string>([...dragContext.current.clusterIds, ...dragContext.current.memberIds, node.id]);
@@ -369,6 +466,11 @@ export default function GraphCanvas() {
       dragContext.current.active = false;
     } else {
       updateNodeData(node.id, { visualPosition: node.position });
+      // Sincronizar nodos multiseleccionados
+      const otherSelected = currentNodes.filter(n => n.selected && n.id !== node.id);
+      otherSelected.forEach(sn => {
+        updateNodeData(sn.id, { visualPosition: sn.position });
+      });
     }
     
     // Recalcular membresías para todos los individuos
@@ -404,6 +506,9 @@ export default function GraphCanvas() {
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
         connectionMode={ConnectionMode.Loose}
+        selectionMode={SelectionMode.Partial}
+        panOnDrag={[1, 2]}
+        selectionOnDrag
         fitView
         className="touch-manipulation"
         proOptions={{ hideAttribution: true }}

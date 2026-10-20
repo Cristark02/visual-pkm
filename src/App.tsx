@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useStore } from './store/useStore';
 import { openDocument, currentFileHandle, parseDocument } from './lib/fsManager';
-import { FileJson, AlertCircle, Download, Plus, Info, ExternalLink, UploadCloud, X } from 'lucide-react';
+import { FileJson, AlertCircle, Download, Plus, Info, ExternalLink, UploadCloud, X, UserPlus, FolderPlus } from 'lucide-react';
 import type { VisualPkmDocument } from './types/store';
+import { ReactFlowProvider } from 'reactflow';
 
 import GraphCanvas from './components/GraphCanvas';
 import Sidebar from './components/Sidebar';
 import Toolbar from './components/Toolbar';
+import FilterPanel from './components/FilterPanel';
 import { exportToVectorPDF } from './lib/pdfExporter';
 
 function App() {
@@ -28,6 +30,30 @@ function App() {
 
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  useEffect(() => {
+    // Teclado global: Ctrl+Z / Cmd+Z (Deshacer) y Ctrl+Y / Ctrl+Shift+Z (Rehacer)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          useStore.getState().redo();
+        } else {
+          useStore.getState().undo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        useStore.getState().redo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     // Cuando cambia la selección, por defecto escondemos el sidebar completo en móvil
@@ -262,7 +288,26 @@ function App() {
               <p className="hidden sm:block text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Vault: {metadata.vaultOwner} • {nodes.length} Nodos</p>
             </div>
           </div>
+
           <div className="flex items-center gap-1 sm:gap-2">
+            {/* Botones de acción rápida siempre accesibles en móvil */}
+            <button 
+              type="button"
+              onClick={() => useStore.getState().addNode('individual')}
+              className="sm:hidden flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-full border border-blue-200 shadow-xs"
+              title="Añadir Persona"
+            >
+              <UserPlus size={13} /> Persona
+            </button>
+            <button 
+              type="button"
+              onClick={() => useStore.getState().addNode('cluster')}
+              className="sm:hidden flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-full border border-purple-200 shadow-xs"
+              title="Añadir Grupo"
+            >
+              <FolderPlus size={13} /> Grupo
+            </button>
+
             <button 
               onClick={handleExportZIP}
               className="flex items-center gap-1 sm:gap-2 text-[11px] sm:text-xs font-semibold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 px-2 sm:px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-indigo-200"
@@ -287,10 +332,13 @@ function App() {
         </header>
 
         <main className="flex-1 relative flex">
-          <div className="flex-1 relative">
-            <GraphCanvas />
-            <Toolbar />
-          </div>
+          <ReactFlowProvider>
+            <div className="flex-1 relative">
+              <GraphCanvas />
+              <Toolbar onToggleFilter={() => setIsFilterOpen(!isFilterOpen)} isFilterOpen={isFilterOpen} />
+              <FilterPanel isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />
+            </div>
+          </ReactFlowProvider>
           
           {selectedEntityId && (
             <>
@@ -333,7 +381,7 @@ function App() {
               
               {/* Sidebar Panel (Bottom sheet on mobile, right sidebar on desktop) */}
               <div 
-                className={`fixed inset-x-0 bottom-0 h-[85vh] w-full bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.2)] rounded-t-3xl flex flex-col z-50 md:relative md:inset-auto md:h-full md:w-80 md:max-w-none md:z-40 border-l border-gray-200 md:rounded-none transition-transform duration-300 ${mobileSidebarOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}`}
+                className={`fixed inset-x-0 bottom-0 h-[88vh] max-h-[92vh] w-full bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.2)] rounded-t-3xl flex flex-col z-50 md:relative md:inset-auto md:h-full md:w-80 md:max-w-none md:z-40 border-l border-gray-200 md:rounded-none transition-transform duration-300 ${mobileSidebarOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}`}
               >
                 {/* Drag Handle for Mobile */}
                 <div 

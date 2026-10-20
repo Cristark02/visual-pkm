@@ -1,9 +1,10 @@
-export type NodeType = 'individual' | 'cluster';
+export type NodeType = 'individual' | 'cluster' | 'textAnnotation' | 'imageAnnotation';
 
 export interface IdentityData {
   givenName: string;
   familyName?: string;
   alias?: string;
+  birthDate?: string;
 }
 
 export interface NodeData {
@@ -11,11 +12,14 @@ export interface NodeData {
   semanticLabel?: string;
   description?: string;
   historicalNotes?: string;
+  personalContext?: string;
+  relationalContext?: string;
   mediaReferences?: {
     primaryAvatarPath?: string;
   };
   biographicalAttributes?: {
     gender?: string;
+    birthDate?: string;
     [key: string]: string | undefined;
   };
   visualPosition?: { x: number, y: number };
@@ -23,6 +27,14 @@ export interface NodeData {
   clusterIds?: string[];
   isChainLinked?: boolean;
   color?: string;
+  styleConfig?: {
+    fontSize?: number;
+    fontFamily?: string;
+    textColor?: string;
+    bgColor?: string;
+    highlightStyle?: 'solid' | 'pill' | 'transparent';
+    textAlign?: 'left' | 'center' | 'right';
+  };
 }
 
 export interface NodeModel {
@@ -37,6 +49,8 @@ export interface EdgeData {
     endDate?: string | null;
   };
   contextualNotes?: string;
+  arrowDirection?: 'none' | 'forward' | 'backward' | 'mutual';
+  curvature?: number;
 }
 
 export interface EdgeModel {

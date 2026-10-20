@@ -12,11 +12,13 @@ const ParallelEdge = ({
   targetX,
   targetY,
   style = {},
+  markerStart,
   markerEnd,
   data,
 }: EdgeProps) => {
   const offsetIndex = data?.offsetIndex || 0;
   const isZigZag = data?.isZigZag || false;
+  const userCurvature = data?.curvature || 0;
   
   const rawSemanticType = data?.semanticRelationshipType || 'Conexión';
   const taxRule = getTaxonomyRelation(rawSemanticType);
@@ -55,8 +57,8 @@ const ParallelEdge = ({
         const baseY = sourceY + dy * t;
         
         const zigFactor = (i % 2 === 0 ? 1 : -1) * 10;
-        const px = baseX + nx * (offsetDistance + zigFactor);
-        const py = baseY + ny * (offsetDistance + zigFactor);
+        const px = baseX + nx * (offsetDistance + userCurvature + zigFactor);
+        const py = baseY + ny * (offsetDistance + userCurvature + zigFactor);
         
         zigZagPath += ` L ${px} ${py}`;
         
@@ -67,18 +69,24 @@ const ParallelEdge = ({
       }
       path = zigZagPath;
     } else {
-      const baseCurveOffset = offsetIndex === 0 ? 15 : offsetDistance * 2;
+      const baseCurveOffset = (offsetIndex === 0 ? 0 : offsetDistance * 2) + userCurvature;
       
       const mx = sourceX + dx / 2;
       const my = sourceY + dy / 2;
 
-      const cx = mx + nx * baseCurveOffset;
-      const cy = my + ny * baseCurveOffset;
+      if (baseCurveOffset === 0) {
+        path = `M ${sourceX},${sourceY} L ${targetX},${targetY}`;
+        labelX = mx;
+        labelY = my;
+      } else {
+        const cx = mx + nx * baseCurveOffset;
+        const cy = my + ny * baseCurveOffset;
 
-      path = `M ${sourceX},${sourceY} Q ${cx},${cy} ${targetX},${targetY}`;
-      
-      labelX = 0.25 * sourceX + 0.5 * cx + 0.25 * targetX;
-      labelY = 0.25 * sourceY + 0.5 * cy + 0.25 * targetY;
+        path = `M ${sourceX},${sourceY} Q ${cx},${cy} ${targetX},${targetY}`;
+        
+        labelX = 0.25 * sourceX + 0.5 * cx + 0.25 * targetX;
+        labelY = 0.25 * sourceY + 0.5 * cy + 0.25 * targetY;
+      }
     }
 
     // Lógica inteligente: Si los nodos están muy cerca, empujamos la etiqueta perpendicularmente 
@@ -131,6 +139,7 @@ const ParallelEdge = ({
       />
       <BaseEdge 
         path={path} 
+        markerStart={markerStart}
         markerEnd={markerEnd} 
         style={edgeStyle} 
       />

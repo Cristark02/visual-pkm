@@ -29,8 +29,15 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (mediaReferences?.primaryAvatarPath) {
-      resolveLocalMedia(mediaReferences.primaryAvatarPath).then(setAvatarUrl);
+    const path = mediaReferences?.primaryAvatarPath;
+    if (path) {
+      if (path.startsWith('data:') || path.startsWith('http') || path.startsWith('blob:')) {
+        setAvatarUrl(path);
+      } else {
+        resolveLocalMedia(path).then(setAvatarUrl);
+      }
+    } else {
+      setAvatarUrl(null);
     }
   }, [mediaReferences]);
 

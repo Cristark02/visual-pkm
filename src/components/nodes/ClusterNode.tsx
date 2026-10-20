@@ -1,9 +1,9 @@
 import { memo, useState, useRef } from 'react';
 import { Handle, Position } from 'reactflow';
 import type { NodeProps } from 'reactflow';
-import { NodeResizeControl } from '@reactflow/node-resizer';
+import { NodeResizer } from '@reactflow/node-resizer';
 import '@reactflow/node-resizer/dist/style.css';
-import { Link2, Unlink, ArrowDownLeft } from 'lucide-react';
+import { Link2, Unlink } from 'lucide-react';
 import type { NodeData } from '../../types/store';
 import { useStore } from '../../store/useStore';
 
@@ -26,36 +26,33 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   const shape = data.biographicalAttributes?.shape || 'square';
   
   const svgPaths: Record<string, string> = {
-    circle: '<ellipse cx="50" cy="50" rx="48" ry="48" vector-effect="non-scaling-stroke" />',
-    square: '<rect x="2" y="2" width="96" height="96" rx="8" vector-effect="non-scaling-stroke" />',
-    star: '<polygon points="50,2 65,35 98,40 75,65 85,98 50,80 15,98 25,65 2,40 35,35" vector-effect="non-scaling-stroke" />',
-    heart: '<polygon points="50,98 10,60 2,30 15,2 50,25 85,2 98,30 90,60" vector-effect="non-scaling-stroke" />',
-    hexagon: '<polygon points="25,2 75,2 98,50 75,98 25,98 2,50" vector-effect="non-scaling-stroke" />',
-    diamond: '<polygon points="50,2 98,50 50,98 2,50" vector-effect="non-scaling-stroke" />',
-    triangle: '<polygon points="50,2 98,98 2,98" vector-effect="non-scaling-stroke" />',
-    pentagon: '<polygon points="50,2 98,38 81,98 19,98 2,38" vector-effect="non-scaling-stroke" />',
-    octagon: '<polygon points="30,2 70,2 98,30 98,70 70,98 30,98 2,70 2,30" vector-effect="non-scaling-stroke" />',
-    shield: '<polygon points="2,2 98,2 98,75 50,98 2,75" vector-effect="non-scaling-stroke" />'
+    circle: '<ellipse cx="50" cy="50" rx="48" ry="48" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
+    square: '<rect x="2" y="2" width="96" height="96" rx="8" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
+    star: '<polygon points="50,2 65,35 98,40 75,65 85,98 50,80 15,98 25,65 2,40 35,35" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
+    heart: '<polygon points="50,98 10,60 2,30 15,2 50,25 85,2 98,30 90,60" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
+    hexagon: '<polygon points="25,2 75,2 98,50 75,98 25,98 2,50" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
+    diamond: '<polygon points="50,2 98,50 50,98 2,50" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
+    triangle: '<polygon points="50,2 98,98 2,98" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
+    pentagon: '<polygon points="50,2 98,38 81,98 19,98 2,38" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
+    octagon: '<polygon points="30,2 70,2 98,30 98,70 70,98 30,98 2,70 2,30" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
+    shield: '<polygon points="2,2 98,2 98,75 50,98 2,75" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />'
   };
 
   const svgInner = svgPaths[shape] || svgPaths.square;
 
   return (
     <div 
-      className="w-full h-full relative group"
+      className="w-full h-full relative group pointer-events-none"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Capa invisible para atrapar toques en móvil/desktop y permitir arrastre perfecto sin robar foco al SVG */}
-      <div className="absolute inset-0 bg-transparent z-10" />
-
       {/* Botón de Enlace (Lock/Link) - SIEMPRE VISIBLE PERO TRANSLÚCIDO SI NO ESTÁ SELECCIONADO */}
       <button 
         onClick={(e) => { 
           e.stopPropagation(); 
           updateNodeData(id, { isChainLinked: !data.isChainLinked }); 
         }}
-        className={`absolute top-2 right-2 z-50 p-2.5 rounded-full transition-all nodrag nopan cursor-pointer backdrop-blur-sm border ${
+        className={`absolute top-2 right-2 z-50 p-2.5 rounded-full transition-all nodrag nopan cursor-pointer backdrop-blur-sm border pointer-events-auto ${
           data.isChainLinked 
             ? 'bg-indigo-100/90 text-indigo-700 border-indigo-300 shadow-md scale-105' 
             : 'bg-white/50 text-gray-500 border-gray-200 hover:bg-white/90 shadow-sm'
@@ -65,27 +62,25 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         {data.isChainLinked ? <Link2 size={24} /> : <Unlink size={24} />}
       </button>
 
-      {(selected || isHovered) && (
-        <NodeResizeControl 
-          minWidth={150} 
-          minHeight={150}
-          position="bottom-left"
-          onResizeEnd={(_, params) => {
-            updateNodeData(id, { visualDimensions: { width: params.width, height: params.height } });
-          }}
-          style={{ background: 'transparent', border: 'none', width: '48px', height: '48px' }}
-        >
-          <div className="absolute bottom-0 left-0 w-12 h-12 transform translate-y-1/2 -translate-x-1/2 text-indigo-600 bg-white shadow-xl border-2 border-indigo-200 rounded-full flex items-center justify-center hover:bg-indigo-50 active:bg-indigo-100 transition-colors pointer-events-auto cursor-sw-resize z-50 nodrag nopan">
-            <ArrowDownLeft size={24} />
-          </div>
-        </NodeResizeControl>
-      )}
+      <NodeResizer 
+        minWidth={150} 
+        minHeight={150}
+        isVisible={selected || isHovered}
+        lineClassName="border-indigo-400"
+        handleClassName="h-3 w-3 bg-white border-2 border-indigo-600 rounded-sm pointer-events-auto"
+        onResizeEnd={(_, params) => {
+          updateNodeData(id, { 
+            visualDimensions: { width: Math.round(params.width), height: Math.round(params.height) },
+            visualPosition: { x: Math.round(params.x), y: Math.round(params.y) }
+          });
+        }}
+      />
       
       <div className="w-full h-full relative z-0 pointer-events-none">
         <svg 
           viewBox="0 0 100 100" 
           preserveAspectRatio="none" 
-          className="absolute inset-0 w-full h-full"
+          className="absolute inset-0 w-full h-full pointer-events-auto overflow-visible"
         >
           <g 
             dangerouslySetInnerHTML={{ __html: svgInner }} 
@@ -101,14 +96,14 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         
         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none z-20">
           <h3 
-            className="text-xl font-black uppercase tracking-widest transition-colors"
+            className="text-xl font-black uppercase tracking-widest transition-colors select-none"
             style={{ color: data.color || '#312e81', opacity: data.color ? 0.6 : 0.3 }}
           >
             {data.semanticLabel || 'Grupo'}
           </h3>
           {data.description && (
             <p 
-              className="text-sm font-bold mt-2 max-w-[80%] line-clamp-2 transition-colors"
+              className="text-sm font-bold mt-2 max-w-[80%] line-clamp-2 transition-colors select-none"
               style={{ color: data.color || '#3730a3', opacity: data.color ? 0.7 : 0.4 }}
             >
               {data.description}

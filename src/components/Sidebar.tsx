@@ -1,9 +1,25 @@
-import { useState, useMemo } from 'react';
-import { X, Camera, Search, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { useState, useMemo, useRef } from 'react';
+import { X, Camera, Search, Trash2, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, ArrowLeftRight, Minus } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { saveDocument } from '../lib/fsManager';
 import { DEFAULT_TAXONOMY, getTaxonomyRelation } from '../config/taxonomy';
 import type { NodeModel, EdgeModel } from '../types/store';
+
+// Helper to calculate age dynamically from birthDate (YYYY-MM-DD)
+function calculateAge(birthDateString?: string): number | null {
+  if (!birthDateString) return null;
+  const parts = birthDateString.split('-');
+  if (parts.length < 3) return null;
+  const birthDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  if (isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age >= 0 ? age : null;
+}
 
 // Helper to render the visual line preview
 const LinePreview = ({ id }: { id: string }) => {
@@ -26,7 +42,10 @@ const LinePreview = ({ id }: { id: string }) => {
 export default function Sidebar() {
   const { selectedEntityId, selectedEntityType, setSelectedEntity, nodes, edges, updateNodeData, updateEdgeData } = useStore();
   const [searchTerm, setSearchTerm] = useState("");
+  const [isPersonalContextOpen, setIsPersonalContextOpen] = useState(false);
+  const [isRelationalContextOpen, setIsRelationalContextOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const entity = useMemo(() => {
     if (selectedEntityType === 'node') return nodes.find(n => n.id === selectedEntityId);
@@ -51,6 +70,34 @@ export default function Sidebar() {
     saveDocument(doc).catch(console.error);
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !entity) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      updateNodeData(entity.id, {
+        mediaReferences: {
+          ...(entity as NodeModel).data.mediaReferences,
+          primaryAvatarPath: dataUrl
+        }
+      });
+      triggerSave();
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    if (!entity) return;
+    updateNodeData(entity.id, {
+      mediaReferences: {
+        ...(entity as NodeModel).data.mediaReferences,
+        primaryAvatarPath: undefined
+      }
+    });
+    triggerSave();
+  };
+
   if (!entity) return null;
 
   const isNode = selectedEntityType === 'node';
@@ -58,10 +105,16 @@ export default function Sidebar() {
   const isCluster = isNode && (entity as NodeModel).type === 'cluster';
   const isEdge = selectedEntityType === 'edge';
 
+  const avatarPath = isIndividual ? (entity as NodeModel).data.mediaReferences?.primaryAvatarPath : undefined;
+  const birthDate = isIndividual 
+    ? ((entity as NodeModel).data.identity?.birthDate || (entity as NodeModel).data.biographicalAttributes?.birthDate || '')
+    : '';
+  const calculatedAge = isIndividual ? calculateAge(birthDate) : null;
+
   return (
-    <div className="h-full w-full bg-white/90 backdrop-blur-xl flex flex-col transform transition-all duration-300">
-      <div className="flex items-center justify-between p-5 border-b border-gray-100/50 bg-transparent shrink-0">
-        <h2 className="font-bold text-gray-800 text-lg truncate pr-2">
+    <div className="h-full w-full bg-white/95 backdrop-blur-xl flex flex-col transform transition-all duration-300">
+      <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 bg-transparent shrink-0">
+        <h2 className="font-bold text-gray-800 text-base sm:text-lg truncate pr-2">
           {isNode 
             ? ((entity as NodeModel).data.identity?.alias || (entity as NodeModel).data.identity?.givenName || (entity as NodeModel).data.semanticLabel || 'Nodo')
             : `Unión`}
@@ -71,103 +124,164 @@ export default function Sidebar() {
         </button>
       </div>
       
-      <div className="flex-1 overflow-y-auto flex flex-col no-scrollbar">
-        <div className="p-5 bg-indigo-50/20 border-b border-indigo-100/50 space-y-4 shrink-0">
-          {isIndividual && (
-            <>
-              <div className="flex gap-3">
-                <input 
-                  type="text" 
-                  value={(entity as NodeModel).data.identity?.givenName || ''} 
-                  onChange={e => handleChange(() => updateNodeData(entity.id, { identity: { ...(entity as NodeModel).data.identity, givenName: e.target.value } }))} 
-                  onBlur={triggerSave}
-                  placeholder="Nombre" 
-                  className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
-                />
-                <input 
-                  type="text" 
-                  value={(entity as NodeModel).data.identity?.familyName || ''} 
-                  onChange={e => handleChange(() => updateNodeData(entity.id, { identity: { ...(entity as NodeModel).data.identity, familyName: e.target.value } }))} 
-                  onBlur={triggerSave}
-                  placeholder="Apellidos" 
-                  className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
-                />
-              </div>
+      {/* Scrollable Container with touch-friendly support */}
+      <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y flex flex-col p-4 sm:p-5 space-y-4">
+        {isIndividual && (
+          <div className="bg-indigo-50/30 border border-indigo-100/60 rounded-2xl p-4 space-y-3 shrink-0">
+            <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider block">Identidad</span>
+            <div className="flex gap-2">
               <input 
                 type="text" 
-                value={(entity as NodeModel).data.identity?.alias || ''} 
-                onChange={e => handleChange(() => updateNodeData(entity.id, { identity: { ...(entity as NodeModel).data.identity, alias: e.target.value } }))} 
+                value={(entity as NodeModel).data.identity?.givenName || ''} 
+                onChange={e => handleChange(() => updateNodeData(entity.id, { identity: { ...(entity as NodeModel).data.identity, givenName: e.target.value } }))} 
                 onBlur={triggerSave}
-                placeholder="Alias / Apodo" 
-                className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
+                placeholder="Nombre" 
+                className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
               />
-              <button onClick={() => alert('Próximamente: Selector de archivos nativo.')} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all cursor-pointer shadow-sm">
-                <Camera size={16} className="text-indigo-500" /> Asignar Foto
-              </button>
-            </>
-          )}
-          
-          {isCluster && (
-            <div className="space-y-4">
               <input 
                 type="text" 
-                value={(entity as NodeModel).data.semanticLabel || ''} 
-                onChange={e => handleChange(() => updateNodeData(entity.id, { semanticLabel: e.target.value }))} 
+                value={(entity as NodeModel).data.identity?.familyName || ''} 
+                onChange={e => handleChange(() => updateNodeData(entity.id, { identity: { ...(entity as NodeModel).data.identity, familyName: e.target.value } }))} 
                 onBlur={triggerSave}
-                placeholder="Nombre del Grupo" 
-                className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
+                placeholder="Apellidos" 
+                className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
               />
+            </div>
+            <input 
+              type="text" 
+              value={(entity as NodeModel).data.identity?.alias || ''} 
+              onChange={e => handleChange(() => updateNodeData(entity.id, { identity: { ...(entity as NodeModel).data.identity, alias: e.target.value } }))} 
+              onBlur={triggerSave}
+              placeholder="Alias / Apodo" 
+              className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
+            />
 
-              <label className="flex items-center gap-2 cursor-pointer bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors">
-                <input 
-                  type="checkbox" 
-                  checked={(entity as NodeModel).data.isChainLinked || false}
-                  onChange={(e) => {
-                    updateNodeData(entity.id, { isChainLinked: e.target.checked });
-                    triggerSave();
-                  }}
-                  className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                />
-                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Vincular Arrastre (Candado)
-                </span>
-              </label>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Miembros del Grupo</label>
-                <div className="bg-white border border-gray-200 rounded-xl p-3 max-h-40 overflow-y-auto no-scrollbar shadow-inner">
-                  {nodes.filter(n => n.type === 'individual' && n.data.clusterIds?.includes(entity.id)).length > 0 ? (
-                    <ul className="space-y-2">
-                      {nodes
-                        .filter(n => n.type === 'individual' && n.data.clusterIds?.includes(entity.id))
-                        .map(member => {
-                          const mId = member.data.identity;
-                          const mName = mId?.alias || [mId?.givenName, mId?.familyName].filter(Boolean).join(' ') || 'Desconocido';
-                          return (
-                            <li key={member.id} className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                              <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: member.data.color || '#9ca3af' }} />
-                              <span className="truncate">{mName}</span>
-                            </li>
-                          );
-                        })
-                      }
-                    </ul>
-                  ) : (
-                    <p className="text-xs text-gray-400 italic text-center py-2">No hay miembros en este grupo.</p>
-                  )}
+            {/* Selector de Foto Nativo */}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              accept="image/*" 
+              className="hidden" 
+              onChange={handleImageUpload} 
+            />
+            {avatarPath ? (
+              <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-gray-200 shadow-sm">
+                <img src={avatarPath} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                <div className="flex-1 flex gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()} 
+                    className="flex-1 py-1.5 px-2 text-xs font-bold text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+                  >
+                    Cambiar
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={handleRemoveImage} 
+                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg border border-red-100 transition-colors"
+                    title="Eliminar Foto"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <button 
+                type="button"
+                onClick={() => fileInputRef.current?.click()} 
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all cursor-pointer shadow-sm"
+              >
+                <Camera size={16} className="text-indigo-500" /> Asignar Foto
+              </button>
+            )}
 
-          {(isIndividual || isCluster) && (
+            {/* Fecha de Nacimiento y Edad Dinámica */}
+            <div className="pt-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                Fecha de Nacimiento {calculatedAge !== null && <span className="text-indigo-600 font-extrabold ml-1">({calculatedAge} años)</span>}
+              </label>
+              <input 
+                type="date"
+                value={birthDate}
+                onChange={e => {
+                  const val = e.target.value;
+                  updateNodeData(entity.id, { 
+                    identity: { ...(entity as NodeModel).data.identity, birthDate: val },
+                    biographicalAttributes: { ...(entity as NodeModel).data.biographicalAttributes, birthDate: val }
+                  });
+                  triggerSave();
+                }}
+                className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+              />
+            </div>
+          </div>
+        )}
+        
+        {isCluster && (
+          <div className="bg-indigo-50/30 border border-indigo-100/60 rounded-2xl p-4 space-y-3 shrink-0">
+            <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider block">Propiedades del Grupo</span>
+            <input 
+              type="text" 
+              value={(entity as NodeModel).data.semanticLabel || ''} 
+              onChange={e => handleChange(() => updateNodeData(entity.id, { semanticLabel: e.target.value }))} 
+              onBlur={triggerSave}
+              placeholder="Nombre del Grupo" 
+              className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm" 
+            />
+
+            <label className="flex items-center gap-2 cursor-pointer bg-white p-2.5 rounded-xl border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors">
+              <input 
+                type="checkbox" 
+                checked={(entity as NodeModel).data.isChainLinked || false}
+                onChange={(e) => {
+                  updateNodeData(entity.id, { isChainLinked: e.target.checked });
+                  triggerSave();
+                }}
+                className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+              />
+              <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                Vincular Arrastre (Candado)
+              </span>
+            </label>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Miembros ({nodes.filter(n => n.type === 'individual' && n.data.clusterIds?.includes(entity.id)).length})</label>
+              <div className="bg-white border border-gray-200 rounded-xl p-2.5 max-h-32 overflow-y-auto shadow-inner text-xs">
+                {nodes.filter(n => n.type === 'individual' && n.data.clusterIds?.includes(entity.id)).length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {nodes
+                      .filter(n => n.type === 'individual' && n.data.clusterIds?.includes(entity.id))
+                      .map(member => {
+                        const mId = member.data.identity;
+                        const mName = mId?.alias || [mId?.givenName, mId?.familyName].filter(Boolean).join(' ') || 'Desconocido';
+                        return (
+                          <li key={member.id} className="font-medium text-gray-700 flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: member.data.color || '#9ca3af' }} />
+                            <span className="truncate">{mName}</span>
+                          </li>
+                        );
+                      })
+                    }
+                  </ul>
+                ) : (
+                  <p className="text-gray-400 italic text-center py-1">No hay miembros en este grupo.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(isIndividual || isCluster) && (
+          <div className="space-y-3 bg-gray-50/60 p-4 rounded-2xl border border-gray-200/60 shrink-0">
+            <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wider block">Apariencia</span>
+            
             <select 
               value={(entity as NodeModel).data.biographicalAttributes?.shape || 'circle'} 
               onChange={e => {
                 updateNodeData(entity.id, { biographicalAttributes: { ...(entity as NodeModel).data.biographicalAttributes, shape: e.target.value } });
                 triggerSave();
               }} 
-              className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+              className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
             >
               <option value="circle">Forma: Círculo/Óvalo</option>
               <option value="square">Forma: Rectángulo/Cuadrado</option>
@@ -180,30 +294,28 @@ export default function Sidebar() {
               <option value="octagon">Forma: Octágono</option>
               <option value="shield">Forma: Escudo</option>
             </select>
-          )}
 
-          {isIndividual && (
-            <select 
-              value={(entity as NodeModel).data.biographicalAttributes?.gender || ''} 
-              onChange={e => {
-                updateNodeData(entity.id, { biographicalAttributes: { ...(entity as NodeModel).data.biographicalAttributes, gender: e.target.value } });
-                triggerSave();
-              }} 
-              className="w-full px-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
-            >
-              <option value="">Género: No especificado</option>
-              <option value="Mujer">Mujer</option>
-              <option value="Hombre">Hombre</option>
-              <option value="No binario">No binario</option>
-              <option value="Fluido">Fluido</option>
-              <option value="Otro">Otro</option>
-              <option value="Prefiero no decirlo">Prefiero no decirlo</option>
-            </select>
-          )}
+            {isIndividual && (
+              <select 
+                value={(entity as NodeModel).data.biographicalAttributes?.gender || ''} 
+                onChange={e => {
+                  updateNodeData(entity.id, { biographicalAttributes: { ...(entity as NodeModel).data.biographicalAttributes, gender: e.target.value } });
+                  triggerSave();
+                }} 
+                className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+              >
+                <option value="">Género: No especificado</option>
+                <option value="Mujer">Mujer</option>
+                <option value="Hombre">Hombre</option>
+                <option value="No binario">No binario</option>
+                <option value="Fluido">Fluido</option>
+                <option value="Otro">Otro</option>
+                <option value="Prefiero no decirlo">Prefiero no decirlo</option>
+              </select>
+            )}
 
-          {(isIndividual || isCluster) && (
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Color de Destaque</label>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Color de Destaque</label>
               <div className="flex flex-wrap gap-2">
                 {[
                   '#818cf8', // Indigo
@@ -241,29 +353,90 @@ export default function Sidebar() {
                 </button>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {isIndividual && (entity as NodeModel).data.clusterIds && (entity as NodeModel).data.clusterIds!.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pertenece a:</span>
-              <div className="flex flex-wrap gap-1">
-                {(entity as NodeModel).data.clusterIds!.map(cId => {
-                  const c = nodes.find(n => n.id === cId);
-                  if (!c) return null;
+        {/* Edge Specific Controls: Type, Direction, Curvature */}
+        {isEdge && (
+          <div className="space-y-4 shrink-0">
+            {/* Dirección de Flechas */}
+            <div className="bg-indigo-50/30 border border-indigo-100/60 rounded-2xl p-4 space-y-2">
+              <label className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider block">Sentido / Flecha de la Relación</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'none', label: 'Sin flecha', icon: Minus },
+                  { id: 'forward', label: 'Hacia B', icon: ArrowRight },
+                  { id: 'backward', label: 'Hacia A', icon: ArrowLeft },
+                  { id: 'mutual', label: 'Mutua / Ambas', icon: ArrowLeftRight },
+                ].map(opt => {
+                  const Icon = opt.icon;
+                  const currentDir = (entity as EdgeModel).data?.arrowDirection || 'none';
+                  const isSelected = currentDir === opt.id;
                   return (
-                    <span key={cId} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-md text-[10px] font-bold uppercase tracking-wider">
-                      {c.data.semanticLabel || 'Grupo'}
-                    </span>
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        updateEdgeData(entity.id, { 
+                          data: { ...(entity as EdgeModel).data, arrowDirection: opt.id } 
+                        });
+                        triggerSave();
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                        isSelected 
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon size={14} />
+                      <span className="truncate">{opt.label}</span>
+                    </button>
                   );
                 })}
               </div>
             </div>
-          )}
-          
-          {isEdge && (
-            <div className="space-y-3">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo de Relación</label>
-              
+
+            {/* Curvatura de la línea */}
+            <div className="bg-gray-50/60 border border-gray-200/60 rounded-2xl p-4 space-y-2">
+              <div className="flex justify-between items-center text-xs font-bold text-gray-600">
+                <span className="uppercase tracking-wider">Curvatura de la Línea</span>
+                <span className="text-indigo-600 font-mono">{((entity as EdgeModel).data?.curvature || 0)}px</span>
+              </div>
+              <input 
+                type="range"
+                min="-100"
+                max="100"
+                step="5"
+                value={(entity as EdgeModel).data?.curvature || 0}
+                onChange={e => {
+                  const val = parseInt(e.target.value);
+                  updateEdgeData(entity.id, {
+                    data: { ...(entity as EdgeModel).data, curvature: val }
+                  });
+                }}
+                onMouseUp={triggerSave}
+                onTouchEnd={triggerSave}
+                className="w-full accent-indigo-600 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-gray-400">
+                <span>Curva Izq</span>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    updateEdgeData(entity.id, { data: { ...(entity as EdgeModel).data, curvature: 0 } });
+                    triggerSave();
+                  }}
+                  className="hover:text-indigo-600 font-bold"
+                >
+                  Recta (0)
+                </button>
+                <span>Curva Der</span>
+              </div>
+            </div>
+
+            {/* Tipo de Relación */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Tipo de Relación</label>
               <div className="relative">
                 <Search size={14} className="absolute left-3 top-2.5 text-gray-400" />
                 <input 
@@ -275,7 +448,7 @@ export default function Sidebar() {
                 />
               </div>
 
-              <div className="h-64 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-inner no-scrollbar">
+              <div className="h-56 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-inner touch-pan-y">
                 {DEFAULT_TAXONOMY.map(cat => {
                   const filtered = cat.relationships.filter(r => r.id.toLowerCase().includes(searchTerm.toLowerCase()));
                   if (filtered.length === 0) return null;
@@ -305,35 +478,94 @@ export default function Sidebar() {
                 })}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        <div className={`p-5 flex flex-col ${isNotesOpen ? 'flex-1 min-h-[250px]' : 'shrink-0'}`}>
+        {/* Structured Context Sections: Personal Context, Relational Context, and General Notes */}
+        {isIndividual && (
+          <>
+            {/* Contexto Personal */}
+            <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm shrink-0">
+              <button 
+                type="button"
+                onClick={() => setIsPersonalContextOpen(!isPersonalContextOpen)}
+                className="flex items-center justify-between w-full p-3.5 text-xs font-bold text-gray-700 uppercase tracking-wider hover:bg-gray-50 transition-colors"
+              >
+                <span>Contexto Personal (¿Qué hay de su vida?)</span>
+                {isPersonalContextOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              {isPersonalContextOpen && (
+                <div className="p-3 border-t border-gray-100">
+                  <textarea
+                    value={(entity as NodeModel).data?.personalContext || ''}
+                    onChange={(e) => updateNodeData(entity.id, { personalContext: e.target.value })}
+                    onBlur={triggerSave}
+                    rows={4}
+                    className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none transition-all"
+                    placeholder="¿A qué se dedica? Momento vital actual, intereses, cambios recientes, datos personales..."
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Contexto Relacional */}
+            <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm shrink-0">
+              <button 
+                type="button"
+                onClick={() => setIsRelationalContextOpen(!isRelationalContextOpen)}
+                className="flex items-center justify-between w-full p-3.5 text-xs font-bold text-gray-700 uppercase tracking-wider hover:bg-gray-50 transition-colors"
+              >
+                <span>Contexto Relacional (¿Cómo nos conocimos?)</span>
+                {isRelationalContextOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              {isRelationalContextOpen && (
+                <div className="p-3 border-t border-gray-100">
+                  <textarea
+                    value={(entity as NodeModel).data?.relationalContext || ''}
+                    onChange={(e) => updateNodeData(entity.id, { relationalContext: e.target.value })}
+                    onBlur={triggerSave}
+                    rows={4}
+                    className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none transition-all"
+                    placeholder="¿Cómo y cuándo os conocisteis? Hitos compartidos, anécdotas, evolución del vínculo..."
+                  />
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* General Historical Notes */}
+        <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm shrink-0">
           <button 
+            type="button"
             onClick={() => setIsNotesOpen(!isNotesOpen)}
-            className="flex items-center justify-between w-full text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 hover:text-indigo-600 transition-colors"
+            className="flex items-center justify-between w-full p-3.5 text-xs font-bold text-gray-700 uppercase tracking-wider hover:bg-gray-50 transition-colors"
           >
-            <span>Notas (Historial / Contexto)</span>
+            <span>Notas Generales / Histórico</span>
             {isNotesOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
-          
           {isNotesOpen && (
-            <textarea
-              value={isEdge ? ((entity as EdgeModel).data?.contextualNotes || '') : ((entity as NodeModel).data?.historicalNotes || '')}
-              onChange={(e) => {
-                if (isEdge) updateEdgeData(entity.id, { contextualNotes: e.target.value });
-                else updateNodeData(entity.id, { historicalNotes: e.target.value });
-              }}
-              onBlur={triggerSave}
-              className="w-full flex-1 p-4 bg-white border border-gray-200 rounded-xl text-sm font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none shadow-inner transition-all animate-in fade-in duration-200"
-              placeholder="Añade contexto histórico, anécdotas..."
-            />
+            <div className="p-3 border-t border-gray-100">
+              <textarea
+                value={isEdge ? ((entity as EdgeModel).data?.contextualNotes || '') : ((entity as NodeModel).data?.historicalNotes || '')}
+                onChange={(e) => {
+                  if (isEdge) updateEdgeData(entity.id, { contextualNotes: e.target.value });
+                  else updateNodeData(entity.id, { historicalNotes: e.target.value });
+                }}
+                onBlur={triggerSave}
+                rows={4}
+                className="w-full p-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none transition-all font-mono"
+                placeholder="Añade detalles históricos adicionales, referencias o comentarios..."
+              />
+            </div>
           )}
         </div>
       </div>
 
-      <div className="p-4 border-t border-indigo-100/50 bg-gray-50 shrink-0">
+      {/* Sticky Bottom Action */}
+      <div className="p-4 border-t border-gray-200 bg-gray-50/90 shrink-0">
         <button 
+          type="button"
           onClick={() => {
             const typeName = isEdge ? 'vínculo' : (isCluster ? 'grupo' : 'persona');
             if (window.confirm(`¿Estás seguro de que deseas eliminar este ${typeName}?`)) {
@@ -341,7 +573,7 @@ export default function Sidebar() {
               else useStore.getState().removeNode(entity.id);
             }
           }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold text-red-600 bg-white hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-xl transition-all cursor-pointer shadow-sm"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-red-600 bg-white hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
         >
           <Trash2 size={16} /> Eliminar {isEdge ? 'Vínculo' : (isCluster ? 'Grupo' : 'Persona')}
         </button>

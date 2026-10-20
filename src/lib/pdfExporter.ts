@@ -14,11 +14,17 @@ async function urlToBase64(url: string): Promise<string> {
   });
 }
 
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 0) return '';
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+function getInitials(given?: string, family?: string, fallback?: string) {
+  const g = given?.trim() ? given.trim().charAt(0) : '';
+  const f = family?.trim() ? family.trim().charAt(0) : '';
+  if (g && f) return (g + f).toUpperCase();
+  if (g) return g.toUpperCase();
+  if (fallback?.trim()) {
+    const parts = fallback.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return parts[0].substring(0, 2).toUpperCase();
+  }
+  return '';
 }
 
 function stringToColor(str: string) {
@@ -183,7 +189,7 @@ export async function exportToVectorPDF() {
       const alias = storeNode?.data?.identity?.alias || '';
       
       const name = alias || fullName || storeNode?.data?.semanticLabel || 'Nodo';
-      const initials = getInitials(name);
+      const initials = getInitials(givenName, familyName, alias || storeNode?.data?.semanticLabel);
       
       const bgColor = stringToColor(fullName || alias || 'X');
       const nodeColor = storeNode?.data?.color;

@@ -20,7 +20,7 @@ describe('useStore', () => {
     
     expect(state.nodes).toHaveLength(1);
     expect(state.nodes[0].type).toBe('individual');
-    expect(state.nodes[0].data.identity?.givenName).toBe('Nueva');
+    expect(state.nodes[0].data.identity?.givenName).toBe('Tú');
     expect(state.nodes[0].data.biographicalAttributes?.shape).toBe('circle');
     
     // Debería auto-seleccionar el nodo creado
@@ -57,7 +57,7 @@ describe('useStore', () => {
     expect(state.edges).toHaveLength(1);
     expect(state.edges[0].sourceNodeId).toBe('node-1');
     expect(state.edges[0].targetNodeId).toBe('node-2');
-    expect(state.edges[0].semanticRelationshipType).toBe('Conocido');
+    expect(state.edges[0].semanticRelationshipType).toBe('Conexión');
   });
 
   it('debería actualizar notas de un nodo', () => {
@@ -67,5 +67,25 @@ describe('useStore', () => {
     useStore.getState().updateNodeNotes(nodeId, '# Hola Mundo');
     const node = useStore.getState().nodes[0];
     expect(node.data.historicalNotes).toBe('# Hola Mundo');
+  });
+
+  it('debería soportar Deshacer (Undo) y Rehacer (Redo)', () => {
+    // 1. Añadimos un nodo
+    useStore.getState().addNode('individual');
+    expect(useStore.getState().nodes).toHaveLength(1);
+
+    // 2. Añadimos un segundo nodo
+    useStore.getState().addNode('cluster');
+    expect(useStore.getState().nodes).toHaveLength(2);
+
+    // 3. Deshacer último nodo
+    useStore.getState().undo();
+    expect(useStore.getState().nodes).toHaveLength(1);
+    expect(useStore.getState().nodes[0].type).toBe('individual');
+
+    // 4. Rehacer
+    useStore.getState().redo();
+    expect(useStore.getState().nodes).toHaveLength(2);
+    expect(useStore.getState().nodes[1].type).toBe('cluster');
   });
 });
