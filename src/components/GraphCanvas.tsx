@@ -21,12 +21,16 @@ import 'reactflow/dist/style.css';
 import { useStore } from '../store/useStore';
 import IndividualNode from './nodes/IndividualNode';
 import ClusterNode from './nodes/ClusterNode';
+import TextAnnotationNode from './nodes/TextAnnotationNode';
+import ImageAnnotationNode from './nodes/ImageAnnotationNode';
 import ParallelEdge from './edges/ParallelEdge';
 import { getTaxonomyRelation, DEFAULT_TAXONOMY } from '../config/taxonomy';
 
 const nodeTypes = {
   individual: IndividualNode,
   cluster: ClusterNode,
+  textAnnotation: TextAnnotationNode,
+  imageAnnotation: ImageAnnotationNode,
 };
 
 const edgeTypes = {

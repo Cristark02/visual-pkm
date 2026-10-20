@@ -33,7 +33,7 @@ interface PKMState {
   clearDocument: () => void;
   setSelectedEntity: (id: string | null, type: 'node' | 'edge' | null) => void;
   
-  addNode: (type: 'individual' | 'cluster', position?: { x: number, y: number }) => void;
+  addNode: (type: 'individual' | 'cluster' | 'textAnnotation' | 'imageAnnotation', position?: { x: number, y: number }) => void;
   addEdge: (source: string, target: string) => void;
   
   updateNodeData: (id: string, data: any) => void;
@@ -160,6 +160,10 @@ export const useStore = create<PKMState>((set, get) => ({
       if (position) {
         if (type === 'cluster') {
           visualPosition = { x: Math.round(position.x - 400), y: Math.round(position.y - 400) };
+        } else if (type === 'textAnnotation') {
+          visualPosition = { x: Math.round(position.x - 70), y: Math.round(position.y - 25) };
+        } else if (type === 'imageAnnotation') {
+          visualPosition = { x: Math.round(position.x - 100), y: Math.round(position.y - 100) };
         } else {
           visualPosition = { x: Math.round(position.x - 40), y: Math.round(position.y - 40) };
         }
@@ -174,12 +178,38 @@ export const useStore = create<PKMState>((set, get) => ({
         visualPosition = { x: 0, y: maxY + 150 };
       }
       
+      let nodeData: any;
+      if (type === 'textAnnotation') {
+        nodeData = {
+          description: 'Texto...',
+          visualPosition,
+          styleConfig: { fontFamily: 'sans', highlightStyle: 'pill', bgColor: '#ffffff', textColor: '#1e293b', textAlign: 'center' }
+        };
+      } else if (type === 'imageAnnotation') {
+        nodeData = {
+          visualPosition,
+          visualDimensions: { width: 200, height: 200 }
+        };
+      } else if (type === 'cluster') {
+        nodeData = {
+          semanticLabel: 'Nuevo Grupo',
+          historicalNotes: '',
+          visualPosition,
+          visualDimensions: { width: 800, height: 800 }
+        };
+      } else {
+        nodeData = {
+          identity: { givenName: isFirst ? 'Tú' : 'Nueva', familyName: isFirst ? '' : 'Persona' },
+          biographicalAttributes: { shape: 'circle' },
+          historicalNotes: '',
+          visualPosition
+        };
+      }
+
       const newNode: NodeModel = {
         id,
         type,
-        data: type === 'individual' 
-          ? { identity: { givenName: isFirst ? 'Tú' : 'Nueva', familyName: isFirst ? '' : 'Persona' }, biographicalAttributes: { shape: 'circle' }, historicalNotes: '', visualPosition }
-          : { semanticLabel: 'Nuevo Grupo', historicalNotes: '', visualPosition, visualDimensions: { width: 800, height: 800 } }
+        data: nodeData
       };
       return { nodes: [...state.nodes, newNode], selectedEntityId: id, selectedEntityType: 'node' };
     });

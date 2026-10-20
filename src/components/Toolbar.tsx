@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { UserPlus, FolderPlus, Undo2, Redo2, Filter } from 'lucide-react';
+import { UserPlus, FolderPlus, Undo2, Redo2, Filter, Type, Image } from 'lucide-react';
 import { useReactFlow } from 'reactflow';
 import { useStore } from '../store/useStore';
 
@@ -12,7 +12,7 @@ const Toolbar = ({ onToggleFilter, isFilterOpen }: ToolbarProps) => {
   const { addNode, undo, redo, past, future, activeFilterCategories } = useStore();
   const reactFlow = useReactFlow();
 
-  const handleAddNode = (type: 'individual' | 'cluster') => {
+  const handleAddNode = (type: 'individual' | 'cluster' | 'textAnnotation' | 'imageAnnotation') => {
     let x = 0;
     let y = 0;
     try {
@@ -89,6 +89,28 @@ const Toolbar = ({ onToggleFilter, isFilterOpen }: ToolbarProps) => {
         <FolderPlus size={16} className="text-purple-500" />
         <span className="hidden sm:inline">Añadir Grupo</span>
         <span className="sm:hidden">Grupo</span>
+      </button>
+
+      {/* Add Texto (Stories) */}
+      <button 
+        type="button"
+        onClick={() => handleAddNode('textAnnotation')}
+        className="flex items-center gap-1.5 px-2.5 py-2 hover:bg-pink-50 rounded-xl text-xs sm:text-sm font-bold text-gray-700 hover:text-pink-600 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+        title="Añadir Texto flotante (Estilo Historias)"
+      >
+        <Type size={16} className="text-pink-500" />
+        <span className="hidden sm:inline">Texto</span>
+      </button>
+
+      {/* Add Sticker / Foto */}
+      <button 
+        type="button"
+        onClick={() => handleAddNode('imageAnnotation')}
+        className="flex items-center gap-1.5 px-2.5 py-2 hover:bg-emerald-50 rounded-xl text-xs sm:text-sm font-bold text-gray-700 hover:text-emerald-600 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+        title="Añadir Imagen / Sticker flotante"
+      >
+        <Image size={16} className="text-emerald-500" />
+        <span className="hidden sm:inline">Sticker</span>
       </button>
 
       {/* Filtros Toggle */}
