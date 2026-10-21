@@ -10,6 +10,7 @@ import Sidebar from './components/Sidebar';
 import Toolbar from './components/Toolbar';
 import FilterPanel from './components/FilterPanel';
 import { exportToVectorPDF } from './lib/pdfExporter';
+import { placeNode } from './lib/placeNode';
 
 function App() {
   const { metadata, nodes, loadDocument, clearDocument, selectedEntityId, selectedEntityType } = useStore();
@@ -293,7 +294,7 @@ function App() {
             {/* Botones de acción rápida siempre accesibles en móvil */}
             <button 
               type="button"
-              onClick={() => useStore.getState().addNode('individual')}
+              onClick={() => placeNode('individual')}
               className="sm:hidden flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-full border border-blue-200 shadow-xs"
               title="Añadir Persona"
             >
@@ -301,7 +302,7 @@ function App() {
             </button>
             <button 
               type="button"
-              onClick={() => useStore.getState().addNode('cluster')}
+              onClick={() => placeNode('cluster')}
               className="sm:hidden flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-full border border-purple-200 shadow-xs"
               title="Añadir Grupo"
             >

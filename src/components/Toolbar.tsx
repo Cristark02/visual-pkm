@@ -1,7 +1,8 @@
 import { memo } from 'react';
-import { UserPlus, FolderPlus, Undo2, Redo2, Filter, Type, Image } from 'lucide-react';
-import { useReactFlow } from 'reactflow';
+import { UserPlus, FolderPlus, Undo2, Redo2, Filter, Type, Image, MoveUpRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { placeNode } from '../lib/placeNode';
+import type { NodeType } from '../types/store';
 
 interface ToolbarProps {
   onToggleFilter?: () => void;
@@ -9,33 +10,10 @@ interface ToolbarProps {
 }
 
 const Toolbar = ({ onToggleFilter, isFilterOpen }: ToolbarProps) => {
-  const { addNode, undo, redo, past, future, activeFilterCategories } = useStore();
-  const reactFlow = useReactFlow();
+  const { undo, redo, past, future, activeFilterCategories } = useStore();
+  const filterActive = activeFilterCategories !== null;
 
-  const handleAddNode = (type: 'individual' | 'cluster' | 'textAnnotation' | 'imageAnnotation') => {
-    let x = 0;
-    let y = 0;
-    try {
-      if (reactFlow?.screenToFlowPosition) {
-        const pt = reactFlow.screenToFlowPosition({ 
-          x: window.innerWidth / 2, 
-          y: window.innerHeight / 2 
-        });
-        x = pt.x;
-        y = pt.y;
-      } else if (reactFlow?.getViewport) {
-        const vp = reactFlow.getViewport();
-        x = (-vp.x + window.innerWidth / 2) / (vp.zoom || 1);
-        y = (-vp.y + window.innerHeight / 2) / (vp.zoom || 1);
-      }
-    } catch {
-      x = 0;
-      y = 0;
-    }
-
-    const jitter = Math.floor(Math.random() * 40) - 20;
-    addNode(type, { x: Math.round(x + jitter), y: Math.round(y + jitter) });
-  };
+  const handleAddNode = (type: NodeType) => placeNode(type);
 
   return (
     <div className="absolute bottom-6 sm:bottom-8 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-md px-2 py-1.5 rounded-2xl shadow-xl border border-gray-100 flex items-center gap-1 sm:gap-1.5 z-30 transition-all max-w-[95vw] overflow-x-auto">
@@ -113,6 +91,17 @@ const Toolbar = ({ onToggleFilter, isFilterOpen }: ToolbarProps) => {
         <span className="hidden sm:inline">Sticker</span>
       </button>
 
+      {/* Add Flecha libre (sticker) */}
+      <button 
+        type="button"
+        onClick={() => handleAddNode('arrowAnnotation')}
+        className="flex items-center gap-1.5 px-2.5 py-2 hover:bg-amber-50 rounded-xl text-xs sm:text-sm font-bold text-gray-700 hover:text-amber-600 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+        title="Añadir flecha libre (no se conecta a nodos)"
+      >
+        <MoveUpRight size={16} className="text-amber-500" />
+        <span className="hidden sm:inline">Flecha</span>
+      </button>
+
       {/* Filtros Toggle */}
       {onToggleFilter && (
         <div className="pl-1 border-l border-gray-200">
@@ -121,14 +110,14 @@ const Toolbar = ({ onToggleFilter, isFilterOpen }: ToolbarProps) => {
             onClick={onToggleFilter}
             title="Filtrar por tipo de relación"
             className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              isFilterOpen || activeFilterCategories.length > 0
+              isFilterOpen || filterActive
                 ? 'bg-indigo-600 text-white shadow-sm'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
             <Filter size={15} />
             <span className="hidden sm:inline">Filtros</span>
-            {activeFilterCategories.length > 0 && (
+            {filterActive && (
               <span className="w-2 h-2 rounded-full bg-amber-400" />
             )}
           </button>

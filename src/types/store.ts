@@ -1,4 +1,27 @@
-export type NodeType = 'individual' | 'cluster' | 'textAnnotation' | 'imageAnnotation';
+export type NodeType = 'individual' | 'cluster' | 'textAnnotation' | 'imageAnnotation' | 'arrowAnnotation';
+
+export type ImageShape = 'square' | 'rounded' | 'circle' | 'star' | 'heart';
+
+export interface ImageStyle {
+  shape?: ImageShape;
+  /** Zoom del recorte no destructivo (1 = sin zoom). */
+  zoom?: number;
+  /** Desplazamiento del recorte, en % del marco (-50..50). */
+  offsetX?: number;
+  offsetY?: number;
+}
+
+export interface ArrowStyle {
+  /** Longitud de la flecha en unidades de flujo. */
+  length?: number;
+  /** Ángulo en grados (0 = hacia la derecha). */
+  angle?: number;
+  /** Anchura (grosor) del trazo. */
+  thickness?: number;
+  dash?: 'solid' | 'dashed' | 'dotted';
+  head?: 'end' | 'both' | 'none';
+  color?: string;
+}
 
 export interface IdentityData {
   givenName: string;
@@ -24,6 +47,8 @@ export interface NodeData {
   };
   visualPosition?: { x: number, y: number };
   visualDimensions?: { width: number, height: number };
+  imageStyle?: ImageStyle;
+  arrowStyle?: ArrowStyle;
   clusterIds?: string[];
   isChainLinked?: boolean;
   color?: string;
@@ -33,6 +58,8 @@ export interface NodeData {
     textColor?: string;
     bgColor?: string;
     highlightStyle?: 'solid' | 'pill' | 'transparent';
+    /** Si es false el texto no dibuja fondo (equivale a 'transparent'). */
+    showBackground?: boolean;
     textAlign?: 'left' | 'center' | 'right';
   };
 }

@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import 'svg2pdf.js';
+import { STAR_POINTS, HEART_PATH } from './imageShapes';
 import { useStore } from '../store/useStore';
 
 // Converts an image URL (like a Blob URL) to Base64 to safely embed in the SVG for PDF
@@ -53,7 +54,10 @@ export async function exportToVectorPDF() {
   if (edgesSvg) {
     const g = edgesSvg.querySelector('g');
     if (g) {
-      edgesGroupString = g.innerHTML;
+      // Sin manejadores de edición (data-export-ignore)
+      const clone = g.cloneNode(true) as SVGGElement;
+      clone.querySelectorAll('[data-export-ignore]').forEach(el => el.remove());
+      edgesGroupString = clone.innerHTML;
     }
   }
 
@@ -176,6 +180,62 @@ export async function exportToVectorPDF() {
       
       // Ajuste manual de y + h/2 + 10 para centrar verticalmente al fallar dominant-baseline
       nodesSvgString += `<text x="${x + w/2}" y="${y + h/2 + 10}" fill="${labelColor}" font-size="44" font-family="${FONT_FAMILY}" font-weight="bold" text-anchor="middle" opacity="0.6">${label}</text>`;
+    } else if (storeNode?.type === 'arrowAnnotation') {
+      // Flecha libre: línea + cabezas, rotada alrededor de su cola
+      const st = storeNode.data.arrowStyle || {};
+      const len = st.length ?? 160;
+      const ang = st.angle ?? 0;
+      const t = st.thickness ?? 4;
+      const col = st.color || '#475569';
+      const head = st.head || 'end';
+      const dash = st.dash || 'solid';
+      const hs = 6 + t * 2;
+      const cyA = y + h / 2;
+      const x0 = x + (head === 'both' ? hs * 0.8 : 0);
+      const x1 = x + len - (head !== 'none' ? hs * 0.8 : 0);
+      const da = dash === 'dashed' ? `${t * 3} ${t * 2}` : dash === 'dotted' ? `0.1 ${t * 2.2}` : 'none';
+      const rad = (ang * Math.PI) / 180;
+      const tipX = x + Math.cos(rad) * len;
+      const tipY = cyA + Math.sin(rad) * len;
+      minX = Math.min(minX, tipX - hs); minY = Math.min(minY, tipY - hs);
+      maxX = Math.max(maxX, tipX + hs); maxY = Math.max(maxY, tipY + hs);
+      nodesSvgString += `<g transform="rotate(${ang} ${x} ${cyA})">
+        <line x1="${x0}" y1="${cyA}" x2="${x1}" y2="${cyA}" stroke="${col}" stroke-width="${t}" stroke-dasharray="${da}" stroke-linecap="${dash === 'dotted' ? 'round' : 'butt'}" />
+        ${head !== 'none' ? `<polygon points="${x + len},${cyA} ${x + len - hs},${cyA - hs * 0.6} ${x + len - hs},${cyA + hs * 0.6}" fill="${col}" />` : ''}
+        ${head === 'both' ? `<polygon points="${x},${cyA} ${x + hs},${cyA - hs * 0.6} ${x + hs},${cyA + hs * 0.6}" fill="${col}" />` : ''}
+      </g>`;
+    } else if (storeNode?.type === 'textAnnotation') {
+      const sc = storeNode.data.styleConfig || {};
+      const txt = (storeNode.data.description || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const fs = sc.fontSize || 20;
+      const hasBg = sc.showBackground !== false && (sc.highlightStyle || 'pill') !== 'transparent';
+      const align = sc.textAlign || 'center';
+      const anchor = align === 'left' ? 'start' : align === 'right' ? 'end' : 'middle';
+      const tx = align === 'left' ? x + 16 : align === 'right' ? x + w - 16 : x + w / 2;
+      const rx = (sc.highlightStyle || 'pill') === 'solid' ? 8 : 20;
+      if (hasBg) {
+        nodesSvgString += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" ry="${rx}" fill="${sc.bgColor || '#ffffff'}" />`;
+      }
+      txt.split('\n').forEach((line, li) => {
+        nodesSvgString += `<text x="${tx}" y="${y + 12 + fs * 0.95 + li * fs * 1.4}" fill="${sc.textColor || '#1e293b'}" font-size="${fs}" font-family="${FONT_FAMILY}" font-weight="bold" text-anchor="${anchor}">${line}</text>`;
+      });
+    } else if (storeNode?.type === 'imageAnnotation') {
+      const src = storeNode.data.mediaReferences?.primaryAvatarPath;
+      if (!src) continue;
+      const is = storeNode.data.imageStyle || {};
+      const shape = is.shape || 'rounded';
+      const zoom = is.zoom ?? 1;
+      const ox = ((is.offsetX ?? 0) / 100) * w;
+      const oy = ((is.offsetY ?? 0) / 100) * h;
+      const cid = `imgclip-${(nodeId || String(i)).replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      let clipShape = '';
+      if (shape === 'circle') clipShape = `<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w / 2}" ry="${h / 2}" />`;
+      else if (shape === 'star') clipShape = `<polygon points="${STAR_POINTS.map(([px, py]) => `${x + (px / 100) * w},${y + (py / 100) * h}`).join(' ')}" />`;
+      else if (shape === 'heart') clipShape = `<path d="${HEART_PATH}" transform="translate(${x} ${y}) scale(${w} ${h})" />`;
+      else clipShape = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${shape === 'rounded' ? Math.min(w, h) * 0.18 : 0}" />`;
+      const iw = w * zoom, ih = h * zoom;
+      nodesSvgString += `<defs><clipPath id="${cid}">${clipShape}</clipPath></defs>
+        <g clip-path="url(#${cid})"><image href="${src}" x="${x + w / 2 + ox - iw / 2}" y="${y + h / 2 + oy - ih / 2}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid slice" /></g>`;
     } else {
       // Dibujar IndividualNode
       const innerDiv = node.querySelector('div > div') as HTMLElement;

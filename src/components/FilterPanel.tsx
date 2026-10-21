@@ -9,7 +9,9 @@ interface FilterPanelProps {
 }
 
 const FilterPanel = ({ isOpen, onClose }: FilterPanelProps) => {
-  const { activeFilterCategories, toggleFilterCategory, clearFilterCategories, edges } = useStore();
+  const { activeFilterCategories, toggleFilterCategory, clearFilterCategories, selectAllFilterCategories, deselectAllFilterCategories, edges } = useStore();
+  const selected = activeFilterCategories ?? [];
+  const filterOn = activeFilterCategories !== null;
 
   if (!isOpen) return null;
 
@@ -39,9 +41,26 @@ const FilterPanel = ({ isOpen, onClose }: FilterPanelProps) => {
         </button>
       </div>
 
+      <div className="flex items-center gap-2 pt-3">
+        <button
+          type="button"
+          onClick={() => selectAllFilterCategories(DEFAULT_TAXONOMY.map(c => c.name))}
+          className="flex-1 text-[11px] font-bold px-2 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors cursor-pointer"
+        >
+          Seleccionar todo
+        </button>
+        <button
+          type="button"
+          onClick={deselectAllFilterCategories}
+          className="flex-1 text-[11px] font-bold px-2 py-1.5 rounded-lg border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+        >
+          Deseleccionar todo
+        </button>
+      </div>
+
       <div className="py-3 space-y-1.5 max-h-60 overflow-y-auto overscroll-contain">
         {categoryStats.map(cat => {
-          const isSelected = activeFilterCategories.includes(cat.name);
+          const isSelected = selected.includes(cat.name);
           return (
             <button
               key={cat.name}
@@ -74,11 +93,13 @@ const FilterPanel = ({ isOpen, onClose }: FilterPanelProps) => {
 
       <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
         <span className="text-[11px] text-gray-400 font-medium">
-          {activeFilterCategories.length === 0 
-            ? 'Mostrando todas' 
-            : `${activeFilterCategories.length} activas`}
+          {!filterOn
+            ? 'Mostrando todas'
+            : selected.length === 0
+              ? 'Ninguna seleccionada'
+              : `${selected.length} activas`}
         </span>
-        {activeFilterCategories.length > 0 && (
+        {filterOn && (
           <button
             type="button"
             onClick={clearFilterCategories}

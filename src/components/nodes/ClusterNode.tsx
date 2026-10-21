@@ -1,4 +1,4 @@
-import { memo, useState, useRef } from 'react';
+import { memo, useState, useRef, useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
 import type { NodeProps } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
@@ -26,19 +26,22 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   const shape = data.biographicalAttributes?.shape || 'square';
   
   const svgPaths: Record<string, string> = {
-    circle: '<ellipse cx="50" cy="50" rx="48" ry="48" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
-    square: '<rect x="2" y="2" width="96" height="96" rx="8" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
-    star: '<polygon points="50,2 65,35 98,40 75,65 85,98 50,80 15,98 25,65 2,40 35,35" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
-    heart: '<polygon points="50,98 10,60 2,30 15,2 50,25 85,2 98,30 90,60" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
-    hexagon: '<polygon points="25,2 75,2 98,50 75,98 25,98 2,50" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
-    diamond: '<polygon points="50,2 98,50 50,98 2,50" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
-    triangle: '<polygon points="50,2 98,98 2,98" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
-    pentagon: '<polygon points="50,2 98,38 81,98 19,98 2,38" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
-    octagon: '<polygon points="30,2 70,2 98,30 98,70 70,98 30,98 2,70 2,30" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />',
-    shield: '<polygon points="2,2 98,2 98,75 50,98 2,75" vector-effect="non-scaling-stroke" style="pointer-events: all; cursor: grab;" />'
+    circle: '<ellipse cx="50" cy="50" rx="48" ry="48" vector-effect="non-scaling-stroke" style="pointer-events: all;" />',
+    square: '<rect x="2" y="2" width="96" height="96" rx="8" vector-effect="non-scaling-stroke" style="pointer-events: all;" />',
+    star: '<polygon points="50,2 65,35 98,40 75,65 85,98 50,80 15,98 25,65 2,40 35,35" vector-effect="non-scaling-stroke" style="pointer-events: all;" />',
+    heart: '<polygon points="50,98 10,60 2,30 15,2 50,25 85,2 98,30 90,60" vector-effect="non-scaling-stroke" style="pointer-events: all;" />',
+    hexagon: '<polygon points="25,2 75,2 98,50 75,98 25,98 2,50" vector-effect="non-scaling-stroke" style="pointer-events: all;" />',
+    diamond: '<polygon points="50,2 98,50 50,98 2,50" vector-effect="non-scaling-stroke" style="pointer-events: all;" />',
+    triangle: '<polygon points="50,2 98,98 2,98" vector-effect="non-scaling-stroke" style="pointer-events: all;" />',
+    pentagon: '<polygon points="50,2 98,38 81,98 19,98 2,38" vector-effect="non-scaling-stroke" style="pointer-events: all;" />',
+    octagon: '<polygon points="30,2 70,2 98,30 98,70 70,98 30,98 2,70 2,30" vector-effect="non-scaling-stroke" style="pointer-events: all;" />',
+    shield: '<polygon points="2,2 98,2 98,75 50,98 2,75" vector-effect="non-scaling-stroke" style="pointer-events: all;" />'
   };
 
   const svgInner = svgPaths[shape] || svgPaths.square;
+  // Objeto estable: si cambia su identidad React reescribe el innerHTML en cada render, lo que
+  // recrea la forma entre mousedown y mouseup y hace que el navegador pierda el evento `click`.
+  const innerHtml = useMemo(() => ({ __html: svgInner }), [svgInner]);
 
   return (
     <div 
@@ -66,7 +69,7 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         minWidth={150} 
         minHeight={150}
         isVisible={selected || isHovered}
-        lineClassName="border-indigo-400"
+        lineStyle={{ borderColor: 'transparent' }}
         handleClassName="h-3 w-3 bg-white border-2 border-indigo-600 rounded-sm pointer-events-auto"
         onResizeEnd={(_, params) => {
           updateNodeData(id, { 
@@ -80,10 +83,10 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         <svg 
           viewBox="0 0 100 100" 
           preserveAspectRatio="none" 
-          className="absolute inset-0 w-full h-full pointer-events-auto overflow-visible"
+          className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
         >
           <g 
-            dangerouslySetInnerHTML={{ __html: svgInner }} 
+            dangerouslySetInnerHTML={innerHtml} 
             fill={data.color ? `${data.color}${selected ? '40' : '20'}` : (selected ? 'rgba(224, 231, 255, 0.4)' : 'rgba(238, 242, 255, 0.3)')}
             stroke={data.color || (selected ? '#818cf8' : '#c7d2fe')}
             strokeWidth={selected ? 4 : 2}

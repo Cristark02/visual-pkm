@@ -25,12 +25,16 @@ import TextAnnotationNode from './nodes/TextAnnotationNode';
 import ImageAnnotationNode from './nodes/ImageAnnotationNode';
 import ParallelEdge from './edges/ParallelEdge';
 import { getTaxonomyRelation, DEFAULT_TAXONOMY } from '../config/taxonomy';
+import { isPointInCluster } from '../lib/geometry';
+import { registerFlowInstance } from '../lib/placeNode';
+import ArrowAnnotationNode from './nodes/ArrowAnnotationNode';
 
 const nodeTypes = {
   individual: IndividualNode,
   cluster: ClusterNode,
   textAnnotation: TextAnnotationNode,
   imageAnnotation: ImageAnnotationNode,
+  arrowAnnotation: ArrowAnnotationNode,
 };
 
 const edgeTypes = {
@@ -70,61 +74,14 @@ const checkOverlap = (n1: RFNode, n2: RFNode) => {
   );
 };
 
-function isPointInPolygon(px: number, py: number, vertices: [number, number][]): boolean {
-  let inside = false;
-  for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
-    const xi = vertices[i][0], yi = vertices[i][1];
-    const xj = vertices[j][0], yj = vertices[j][1];
-    const intersect = ((yi > py) !== (yj > py)) && (px < ((xj - xi) * (py - yi)) / (yj - yi) + xi);
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
-
-const POLYGON_SHAPES: Record<string, [number, number][]> = {
-  star: [[50,2],[65,35],[98,40],[75,65],[85,98],[50,80],[15,98],[25,65],[2,40],[35,35]],
-  heart: [[50,98],[10,60],[2,30],[15,2],[50,25],[85,2],[98,30],[90,60]],
-  hexagon: [[25,2],[75,2],[98,50],[75,98],[25,98],[2,50]],
-  diamond: [[50,2],[98,50],[50,98],[2,50]],
-  triangle: [[50,2],[98,98],[2,98]],
-  pentagon: [[50,2],[98,38],[81,98],[19,98],[2,38]],
-  octagon: [[30,2],[70,2],[98,30],[98,70],[70,98],[30,98],[2,70],[2,30]],
-  shield: [[2,2],[98,2],[98,75],[50,98],[2,75]]
-};
-
-const isInside = (individual: RFNode, cluster: RFNode) => {
-  const cx = individual.position.x + 40;
-  const cy = individual.position.y + 40;
-  const cw = cluster.data?.visualDimensions?.width || 800;
-  const ch = cluster.data?.visualDimensions?.height || 800;
-  const clX = cluster.position.x;
-  const clY = cluster.position.y;
-  
-  // Bounding box pre-check
-  if (cx < clX || cx > clX + cw || cy < clY || cy > clY + ch) {
-    return false;
-  }
-
-  const shape = cluster.data?.biographicalAttributes?.shape || 'square';
-  if (shape === 'circle') {
-    const rx = cw / 2;
-    const ry = ch / 2;
-    const centerX = clX + rx;
-    const centerY = clY + ry;
-    const normalized = Math.pow((cx - centerX) / rx, 2) + Math.pow((cy - centerY) / ry, 2);
-    return normalized <= 1.0;
-  }
-
-  if (POLYGON_SHAPES[shape]) {
-    const absVertices: [number, number][] = POLYGON_SHAPES[shape].map(([px, py]) => [
-      clX + (px / 100) * cw,
-      clY + (py / 100) * ch
-    ]);
-    return isPointInPolygon(cx, cy, absVertices);
-  }
-
-  return true;
-};
+const isInside = (individual: RFNode, cluster: RFNode) =>
+  isPointInCluster(individual.position.x + 40, individual.position.y + 40, {
+    x: cluster.position.x,
+    y: cluster.position.y,
+    width: cluster.data?.visualDimensions?.width || 800,
+    height: cluster.data?.visualDimensions?.height || 800,
+    shape: cluster.data?.biographicalAttributes?.shape
+  });
 
 export default function GraphCanvas() {
   const { nodes: storeNodes, edges: storeEdges, setSelectedEntity, addEdge: addStoreEdge, updateNodeData, activeFilterCategories } = useStore();
@@ -133,12 +90,16 @@ export default function GraphCanvas() {
   const [edges, setEdges] = useState<RFEdge[]>([]);
 
   const nodesRef = useRef<RFNode[]>([]);
+  // true mientras el usuario arrastra el rectángulo de selección (caja drag)
+  const boxSelecting = useRef(false);
   
   // Ref para capturar el estado inicial de un drag
   const dragContext = useRef<{ active: boolean, clusterIds: string[], memberIds: string[] }>({ active: false, clusterIds: [], memberIds: [] });
 
   const allowedRelIds = useMemo(() => {
-    if (activeFilterCategories.length === 0) return null;
+    if (activeFilterCategories === null) return null;
+    // Con todas las categorías marcadas no se filtra nada (incluye relaciones sin categoría)
+    if (DEFAULT_TAXONOMY.every(cat => activeFilterCategories.includes(cat.name))) return null;
     const ids = new Set<string>();
     DEFAULT_TAXONOMY.forEach(cat => {
       if (activeFilterCategories.includes(cat.name)) {
@@ -162,6 +123,10 @@ export default function GraphCanvas() {
   }, [allowedRelIds, storeEdges]);
 
   useEffect(() => {
+    const selectedNow = useStore.getState().selectedEntityId;
+    // Si acaba de crearse el nodo seleccionado, este pasa a ser la única selección
+    const freshSelectionId = selectedNow && !nodesRef.current.some(cn => cn.id === selectedNow)
+      && storeNodes.some(n => n.id === selectedNow) ? selectedNow : null;
     const rfNodes: RFNode[] = storeNodes.map((n, i) => {
       let x = n.data.visualPosition?.x;
       let y = n.data.visualPosition?.y;
@@ -198,10 +163,17 @@ export default function GraphCanvas() {
         ? { width: w, height: h, zIndex: -1 } 
         : { width: w, height: h, zIndex: 1, opacity: isFilteredOut ? 0.25 : 1, transition: 'opacity 0.25s ease' };
 
+      // Conserva la selección existente; un nodo recién creado nace seleccionado si el store lo apunta
+      const existingRf = nodesRef.current.find(cn => cn.id === n.id);
+      const wasSelected = existingRf
+        ? (existingRf.selected && !freshSelectionId)
+        : n.id === selectedNow;
+
       return {
         id: n.id,
         type: n.type,
         position: { x, y },
+        selected: wasSelected,
         style: nodeStyle,
         data: {
           ...n.data,
@@ -246,27 +218,20 @@ export default function GraphCanvas() {
         seenLabels.add(semanticType);
 
         const taxRule = getTaxonomyRelation(semanticType);
-        const arrowDir = e.data?.arrowDirection;
+        // La flecha solo existe en relaciones direccionales de la taxonomía (Mentor, Profesor...).
+        // Por defecto apunta de origen a destino; el usuario solo puede cambiar el sentido.
         let markerEnd = undefined;
         let markerStart = undefined;
-
-        if (arrowDir === 'none') {
-          markerEnd = undefined;
-          markerStart = undefined;
-        } else if (arrowDir === 'forward') {
-          markerEnd = { type: MarkerType.ArrowClosed, color: taxRule.color };
-          markerStart = undefined;
-        } else if (arrowDir === 'backward') {
-          markerEnd = undefined;
-          markerStart = { type: MarkerType.ArrowClosed, color: taxRule.color };
-        } else if (arrowDir === 'mutual') {
-          markerEnd = { type: MarkerType.ArrowClosed, color: taxRule.color };
-          markerStart = { type: MarkerType.ArrowClosed, color: taxRule.color };
-        } else {
-          markerEnd = taxRule.arrow ? { type: MarkerType.ArrowClosed, color: taxRule.color } : undefined;
+        if (taxRule.arrow) {
+          const stored = e.data?.arrowDirection;
+          const dir = !stored || stored === 'none' ? 'forward' : stored;
+          const marker = { type: MarkerType.ArrowClosed, color: taxRule.color };
+          if (dir === 'forward' || dir === 'mutual') markerEnd = marker;
+          if (dir === 'backward' || dir === 'mutual') markerStart = marker;
         }
 
-        const isEdgeFilteredOut = allowedRelIds !== null && !allowedRelIds.has(semanticType.toLowerCase());
+        const edgeMatches = allowedRelIds === null || allowedRelIds.has(semanticType.toLowerCase());
+        const filterState = allowedRelIds === null ? undefined : (edgeMatches ? 'highlight' : 'dim');
 
         rfEdges.push({
           id: e.id,
@@ -274,7 +239,6 @@ export default function GraphCanvas() {
           target: e.targetNodeId,
           type: 'parallel',
           animated: false,
-          hidden: isEdgeFilteredOut,
           markerStart,
           markerEnd,
           data: {
@@ -282,7 +246,8 @@ export default function GraphCanvas() {
             semanticRelationshipType: semanticType,
             offsetIndex,
             isZigZag: semanticType === 'Conflicto',
-            isDuplicateLabel
+            isDuplicateLabel,
+            filterState
           }
         });
       });
@@ -338,7 +303,7 @@ export default function GraphCanvas() {
     });
 
     setEdges(rfEdges);
-  }, [storeEdges, storeNodes]);
+  }, [storeEdges, storeNodes, allowedRelIds]);
 
   const onNodeDragStart = useCallback((_: React.MouseEvent, node: RFNode) => {
     if (node.type === 'cluster') {
@@ -390,6 +355,11 @@ export default function GraphCanvas() {
         if (c.type === 'dimensions') {
           return c.dimensions && c.dimensions.width > 0 && c.dimensions.height > 0;
         }
+        // La caja de selección solo atrapa nodos: los grupos se ignoran (siguen
+        // seleccionándose con un clic directo sobre su forma).
+        if (c.type === 'select' && c.selected && boxSelecting.current) {
+          return nds.find(n => n.id === c.id)?.type !== 'cluster';
+        }
         return true;
       });
 
@@ -434,7 +404,24 @@ export default function GraphCanvas() {
   }, [updateNodeData]);
 
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
-    setEdges((eds) => applyEdgeChanges(changes, eds));
+    // La caja de selección tampoco selecciona aristas.
+    const valid = boxSelecting.current
+      ? changes.filter(c => !(c.type === 'select' && c.selected))
+      : changes;
+    setEdges((eds) => applyEdgeChanges(valid, eds));
+  }, []);
+
+  const onNodesDelete = useCallback((deleted: RFNode[]) => {
+    deleted.forEach(n => {
+      if (useStore.getState().nodes.some(x => x.id === n.id)) useStore.getState().removeNode(n.id);
+    });
+  }, []);
+
+  const onEdgesDelete = useCallback((deleted: RFEdge[]) => {
+    // Si el borrado de un nodo ya arrastró sus aristas en el store, no duplicamos pasos de historial.
+    deleted.forEach(e => {
+      if (useStore.getState().edges.some(x => x.id === e.id)) useStore.getState().removeEdge(e.id);
+    });
   }, []);
 
   const onConnect = useCallback((params: Connection) => {
@@ -465,15 +452,15 @@ export default function GraphCanvas() {
       const movedIds = new Set<string>([...dragContext.current.clusterIds, ...dragContext.current.memberIds, node.id]);
       movedIds.forEach((id: string) => {
         const n = currentNodes.find(x => x.id === id);
-        if (n) updateNodeData(id, { visualPosition: n.position });
+        if (n) updateNodeData(id, { visualPosition: n.position }, { history: false });
       });
       dragContext.current.active = false;
     } else {
-      updateNodeData(node.id, { visualPosition: node.position });
+      updateNodeData(node.id, { visualPosition: node.position }, { history: false });
       // Sincronizar nodos multiseleccionados
       const otherSelected = currentNodes.filter(n => n.selected && n.id !== node.id);
       otherSelected.forEach(sn => {
-        updateNodeData(sn.id, { visualPosition: sn.position });
+        updateNodeData(sn.id, { visualPosition: sn.position }, { history: false });
       });
     }
     
@@ -488,7 +475,7 @@ export default function GraphCanvas() {
         // Solo actualizar si hay un cambio real para evitar renders infinitos
         const oldIds = n.data.clusterIds || [];
         if (oldIds.length !== overlappingClusters.length || !oldIds.every((id: string) => overlappingClusters.includes(id))) {
-          updateNodeData(n.id, { clusterIds: overlappingClusters });
+          updateNodeData(n.id, { clusterIds: overlappingClusters }, { history: false });
         }
       }
     });
@@ -509,6 +496,12 @@ export default function GraphCanvas() {
         onPaneClick={onPaneClick}
         onConnect={onConnect}
         onNodeDragStop={onNodeDragStop}
+        onNodesDelete={onNodesDelete}
+        onEdgesDelete={onEdgesDelete}
+        onInit={registerFlowInstance}
+        onSelectionStart={() => { boxSelecting.current = true; }}
+        onSelectionEnd={() => { boxSelecting.current = false; }}
+        multiSelectionKeyCode={['Control', 'Meta']}
         connectionMode={ConnectionMode.Loose}
         selectionMode={SelectionMode.Partial}
         panOnDrag={[1, 2]}

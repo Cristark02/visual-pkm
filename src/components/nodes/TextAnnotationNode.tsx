@@ -2,45 +2,44 @@ import { memo, useState, useRef, useEffect } from 'react';
 import type { NodeProps } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 import '@reactflow/node-resizer/dist/style.css';
-import { Type, Palette, AlignLeft, AlignCenter, AlignRight, Trash2 } from 'lucide-react';
+import { AlignLeft, AlignCenter, AlignRight, Trash2, PaintBucket, Square, RectangleHorizontal } from 'lucide-react';
 import type { NodeData } from '../../types/store';
 import { useStore } from '../../store/useStore';
 
 const FONTS = [
-  { id: 'sans', name: 'Sans', fontClass: 'font-sans' },
-  { id: 'serif', name: 'Serif', fontClass: 'font-serif italic' },
-  { id: 'mono', name: 'Mono', fontClass: 'font-mono' },
+  { id: 'sans', name: 'Sans', fontClass: 'font-sans', sample: 'font-sans' },
+  { id: 'serif', name: 'Serif', fontClass: 'font-serif italic', sample: 'font-serif italic' },
+  { id: 'mono', name: 'Mono', fontClass: 'font-mono', sample: 'font-mono' },
 ];
 
-const HIGHLIGHT_STYLES = ['pill', 'solid', 'transparent'] as const;
+const ALIGNS = [
+  { id: 'left', icon: AlignLeft, title: 'Alinear a la izquierda' },
+  { id: 'center', icon: AlignCenter, title: 'Centrar' },
+  { id: 'right', icon: AlignRight, title: 'Alinear a la derecha' },
+] as const;
 
-const COLORS = [
-  '#ffffff',
-  '#000000',
-  '#ef4444',
-  '#f97316',
-  '#f59e0b',
-  '#10b981',
-  '#06b6d4',
-  '#3b82f6',
-  '#6366f1',
-  '#ec4899',
-];
+const QUICK_COLORS = ['#ffffff', '#000000', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#ec4899'];
+
+/** Tiempo de gracia para que el ratón viaje del texto a su barra sin que esta desaparezca. */
+const HOVER_GRACE_MS = 450;
 
 const TextAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   const { updateNodeData, removeNode } = useStore();
   const [isEditing, setIsEditing] = useState(false);
-  const [showToolbar, setShowToolbar] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const styleConfig = data.styleConfig || {};
-  const text = data.description || 'Escribe algo aquí...';
+  const text = data.description ?? '';
   const fontFamily = styleConfig.fontFamily || 'sans';
   const highlightStyle = styleConfig.highlightStyle || 'pill';
   const textColor = styleConfig.textColor || '#1e293b';
   const bgColor = styleConfig.bgColor || '#ffffff';
   const textAlign = styleConfig.textAlign || 'center';
   const fontSize = styleConfig.fontSize || 20;
+  const showBackground = styleConfig.showBackground !== false && highlightStyle !== 'transparent';
+  const roundShape = highlightStyle !== 'solid';
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -49,41 +48,51 @@ const TextAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
     }
   }, [isEditing]);
 
-  const activeFont = FONTS.find(f => f.id === fontFamily) || FONTS[0];
+  useEffect(() => () => { if (leaveTimer.current) clearTimeout(leaveTimer.current); }, []);
 
-  const getContainerStyles = () => {
-    if (highlightStyle === 'pill') {
-      return {
-        backgroundColor: bgColor,
-        color: textColor,
-        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-        borderRadius: '20px',
-        padding: '10px 18px',
-      };
-    }
-    if (highlightStyle === 'solid') {
-      return {
-        backgroundColor: bgColor,
-        color: textColor,
-        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-        borderRadius: '8px',
-        padding: '12px 16px',
-      };
-    }
-    return {
-      backgroundColor: 'transparent',
-      color: textColor,
-      textShadow: '0 2px 8px rgba(0,0,0,0.3)',
-      padding: '8px',
-    };
+  const patch = (p: Partial<NonNullable<NodeData['styleConfig']>>) =>
+    updateNodeData(id, { styleConfig: { ...styleConfig, ...p } });
+
+  const onEnter = () => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    setHovered(true);
   };
+  const onLeave = () => {
+    if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    leaveTimer.current = setTimeout(() => setHovered(false), HOVER_GRACE_MS);
+  };
+
+  const activeFont = FONTS.find(f => f.id === fontFamily) || FONTS[0];
+  const showToolbar = selected || hovered || isEditing;
+  const isEmpty = text.trim() === '' && !isEditing;
+
+  const containerStyle: React.CSSProperties = showBackground
+    ? {
+        backgroundColor: bgColor,
+        color: textColor,
+        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+        borderRadius: roundShape ? '20px' : '8px',
+        padding: roundShape ? '10px 18px' : '12px 16px',
+      }
+    : {
+        backgroundColor: 'transparent',
+        color: textColor,
+        textShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        padding: '8px',
+        // Texto vacío sin fondo: solo un contorno tenue mientras se interactúa, para poder encontrarlo
+        outline: isEmpty && (selected || hovered) ? '2px dashed rgba(99,102,241,0.5)' : undefined,
+        borderRadius: '8px',
+      };
+
+  const btn = (active: boolean) =>
+    `p-1 rounded-lg transition-colors ${active ? 'bg-white/25' : 'hover:bg-white/15'}`;
 
   return (
     <div 
-      className="relative group min-w-[120px] cursor-grab active:cursor-grabbing select-none"
+      className="relative group min-w-[120px] select-none"
       onDoubleClick={() => setIsEditing(true)}
-      onClick={() => setShowToolbar(true)}
-      onMouseLeave={() => setShowToolbar(false)}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
     >
       <NodeResizer 
         minWidth={80} 
@@ -99,88 +108,127 @@ const TextAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         }}
       />
 
-      {/* Floating Instagram-Style Editor Toolbar */}
-      {(selected || showToolbar) && (
-        <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900/90 backdrop-blur-md px-2 py-1 rounded-2xl shadow-xl flex items-center gap-1.5 z-50 text-white animate-in fade-in duration-150 nodrag nopan">
-          {/* Font Toggle */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              const nextIndex = (FONTS.findIndex(f => f.id === fontFamily) + 1) % FONTS.length;
-              updateNodeData(id, { styleConfig: { ...styleConfig, fontFamily: FONTS[nextIndex].id } });
-            }}
-            className="p-1 hover:bg-white/20 rounded-lg text-xs font-bold uppercase transition-colors"
-            title="Cambiar Tipografía"
-          >
-            <Type size={14} />
-          </button>
+      {/* Barra de edición. Su contenedor (pb-3 transparente) hace de "puente de seguridad"
+          entre el texto y los botones: moverse hacia ella nunca sale del hover. */}
+      {showToolbar && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-3 z-50 nodrag nopan">
+          <div className="bg-gray-900/90 backdrop-blur-md px-2 py-1.5 rounded-2xl shadow-xl flex flex-wrap items-center justify-center gap-1.5 text-white max-w-[340px] animate-in fade-in duration-150">
+            {/* Tipografía */}
+            <div className="flex items-center gap-0.5">
+              {FONTS.map(f => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); patch({ fontFamily: f.id }); }}
+                  className={`${btn(fontFamily === f.id)} text-xs font-bold px-1.5 ${f.sample}`}
+                  title={`Tipografía: ${f.name}`}
+                >
+                  Aa
+                </button>
+              ))}
+            </div>
 
-          {/* Highlight Style Toggle (Pill / Solid / Transparent) */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              const nextIndex = (HIGHLIGHT_STYLES.indexOf(highlightStyle) + 1) % HIGHLIGHT_STYLES.length;
-              updateNodeData(id, { styleConfig: { ...styleConfig, highlightStyle: HIGHLIGHT_STYLES[nextIndex] } });
-            }}
-            className="p-1 hover:bg-white/20 rounded-lg text-xs font-bold transition-colors"
-            title="Estilo de Fondo (Historias)"
-          >
-            <Palette size={14} />
-          </button>
+            {/* Alineación */}
+            <div className="flex items-center gap-0.5 border-l border-white/20 pl-1.5">
+              {ALIGNS.map(a => {
+                const Icon = a.icon;
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); patch({ textAlign: a.id }); }}
+                    className={btn(textAlign === a.id)}
+                    title={a.title}
+                  >
+                    <Icon size={14} />
+                  </button>
+                );
+              })}
+            </div>
 
-          {/* Text Alignment Toggle */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              const aligns: Array<'left' | 'center' | 'right'> = ['left', 'center', 'right'];
-              const nextIndex = (aligns.indexOf(textAlign) + 1) % aligns.length;
-              updateNodeData(id, { styleConfig: { ...styleConfig, textAlign: aligns[nextIndex] } });
-            }}
-            className="p-1 hover:bg-white/20 rounded-lg transition-colors"
-            title="Alineación"
-          >
-            {textAlign === 'left' && <AlignLeft size={14} />}
-            {textAlign === 'center' && <AlignCenter size={14} />}
-            {textAlign === 'right' && <AlignRight size={14} />}
-          </button>
-
-          {/* Quick Color Swatches */}
-          <div className="flex items-center gap-1 px-1 border-l border-white/20">
-            {COLORS.slice(0, 5).map(col => (
+            {/* Fondo opcional */}
+            <div className="flex items-center gap-0.5 border-l border-white/20 pl-1.5">
               <button
-                key={col}
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  updateNodeData(id, { styleConfig: { ...styleConfig, bgColor: col, textColor: col === '#ffffff' ? '#000000' : '#ffffff' } });
+                  if (showBackground) patch({ showBackground: false });
+                  else patch({ showBackground: true, highlightStyle: highlightStyle === 'transparent' ? 'pill' : highlightStyle });
                 }}
-                className="w-3.5 h-3.5 rounded-full border border-white/40 hover:scale-125 transition-transform"
-                style={{ backgroundColor: col }}
-              />
-            ))}
-          </div>
+                className={btn(showBackground)}
+                title={showBackground ? 'Quitar fondo' : 'Poner fondo'}
+              >
+                <PaintBucket size={14} />
+              </button>
+              {showBackground && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); patch({ highlightStyle: roundShape ? 'solid' : 'pill' }); }}
+                  className={btn(false)}
+                  title={roundShape ? 'Esquinas rectas' : 'Esquinas redondeadas'}
+                >
+                  {roundShape ? <RectangleHorizontal size={14} /> : <Square size={14} />}
+                </button>
+              )}
+            </div>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              removeNode(id);
-            }}
-            className="p-1 text-red-400 hover:text-red-300 hover:bg-white/10 rounded-lg transition-colors ml-0.5"
-            title="Eliminar Texto"
-          >
-            <Trash2 size={13} />
-          </button>
+            {/* Colores libres */}
+            <div className="flex items-center gap-1 border-l border-white/20 pl-1.5">
+              <label className="flex items-center gap-1 text-[10px] font-bold text-gray-300" title="Color del texto">
+                A
+                <input
+                  type="color"
+                  value={textColor}
+                  onChange={(e) => patch({ textColor: e.target.value })}
+                  className="w-5 h-5 rounded cursor-pointer bg-transparent border-0 p-0"
+                />
+              </label>
+              {showBackground && (
+                <label className="flex items-center gap-1 text-[10px] font-bold text-gray-300" title="Color de fondo">
+                  <PaintBucket size={11} />
+                  <input
+                    type="color"
+                    value={bgColor}
+                    onChange={(e) => patch({ bgColor: e.target.value })}
+                    className="w-5 h-5 rounded cursor-pointer bg-transparent border-0 p-0"
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Atajos de color (fondo + texto contrastado) */}
+            <div className="flex items-center gap-1 border-l border-white/20 pl-1.5">
+              {QUICK_COLORS.map(col => (
+                <button
+                  key={col}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    patch({ bgColor: col, textColor: col === '#ffffff' ? '#000000' : '#ffffff', showBackground: true, highlightStyle: highlightStyle === 'transparent' ? 'pill' : highlightStyle });
+                  }}
+                  className="w-3.5 h-3.5 rounded-full border border-white/40 hover:scale-125 transition-transform"
+                  style={{ backgroundColor: col }}
+                  title="Aplicar color"
+                />
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); removeNode(id); }}
+              className="p-1 text-red-400 hover:text-red-300 hover:bg-white/10 rounded-lg transition-colors"
+              title="Eliminar texto"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Render text or editing input */}
+      {/* Texto o editor */}
       <div 
-        style={getContainerStyles()}
-        className={`transition-all duration-200 ${activeFont.fontClass}`}
+        style={containerStyle}
+        className={`transition-all duration-200 min-h-[2.5rem] ${activeFont.fontClass}`}
       >
         {isEditing ? (
           <textarea
@@ -194,14 +242,14 @@ const TextAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
                 setIsEditing(false);
               }
             }}
-            className="w-full bg-transparent outline-none resize-none overflow-hidden nodrag nopan text-center"
+            className="w-full bg-transparent outline-none resize-none overflow-hidden nodrag nopan"
             style={{ fontSize: `${fontSize}px`, textAlign, color: textColor }}
             rows={2}
           />
         ) : (
           <div 
             className="whitespace-pre-wrap select-none leading-relaxed font-bold break-words"
-            style={{ fontSize: `${fontSize}px`, textAlign }}
+            style={{ fontSize: `${fontSize}px`, textAlign, minHeight: '1.5em' }}
           >
             {text}
           </div>

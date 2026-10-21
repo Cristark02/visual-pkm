@@ -89,3 +89,54 @@ describe('useStore', () => {
     expect(useStore.getState().nodes[1].type).toBe('cluster');
   });
 });
+
+describe('historial y filtros', () => {
+  beforeEach(() => { useStore.getState().clearDocument(); });
+
+  it('los cambios de datos entran en el historial y se agrupan por ráfaga', () => {
+    useStore.getState().addNode('individual');
+    const id = useStore.getState().nodes[0].id;
+    const base = useStore.getState().past.length;
+
+    useStore.getState().updateNodeData(id, { description: 'a' });
+    useStore.getState().updateNodeData(id, { description: 'ab' });
+    useStore.getState().updateNodeData(id, { description: 'abc' });
+    expect(useStore.getState().past.length).toBe(base + 1); // una sola ráfaga
+
+    useStore.getState().undo();
+    expect(useStore.getState().nodes[0].data.description).toBeUndefined();
+  });
+
+  it('history:false no crea pasos', () => {
+    useStore.getState().addNode('individual');
+    const id = useStore.getState().nodes[0].id;
+    const base = useStore.getState().past.length;
+    useStore.getState().updateNodeData(id, { visualPosition: { x: 5, y: 5 } }, { history: false });
+    expect(useStore.getState().past.length).toBe(base);
+  });
+
+  it('filtro: null = apagado, [] = nada seleccionado', () => {
+    const s = useStore.getState();
+    expect(s.activeFilterCategories).toBeNull();
+    s.deselectAllFilterCategories();
+    expect(useStore.getState().activeFilterCategories).toEqual([]);
+    useStore.getState().selectAllFilterCategories(['A', 'B']);
+    expect(useStore.getState().activeFilterCategories).toEqual(['A', 'B']);
+    useStore.getState().toggleFilterCategory('A');
+    expect(useStore.getState().activeFilterCategories).toEqual(['B']);
+    useStore.getState().clearFilterCategories();
+    expect(useStore.getState().activeFilterCategories).toBeNull();
+  });
+
+  it('las aristas nuevas no fuerzan arrowDirection (decide la taxonomía)', () => {
+    useStore.getState().addEdge('a', 'b');
+    expect(useStore.getState().edges[0].data?.arrowDirection).toBeUndefined();
+  });
+
+  it('crea flechas libres con estilo por defecto', () => {
+    useStore.getState().addNode('arrowAnnotation', { x: 100, y: 100 });
+    const n = useStore.getState().nodes[0];
+    expect(n.type).toBe('arrowAnnotation');
+    expect(n.data.arrowStyle?.length).toBe(160);
+  });
+});

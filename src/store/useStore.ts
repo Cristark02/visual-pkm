@@ -1,5 +1,15 @@
 import { create } from 'zustand';
-import type { VisualPkmDocument, NodeModel, EdgeModel, DocumentMetadata } from '../types/store';
+import type { VisualPkmDocument, NodeModel, EdgeModel, DocumentMetadata, NodeType } from '../types/store';
+
+export interface UpdateOpts {
+  history?: boolean;
+}
+
+const MAX_HISTORY = 50;
+const COALESCE_MS = 1000;
+let lastCoalesceKey: string | null = null;
+let lastCoalesceAt = 0;
+const resetCoalescing = () => { lastCoalesceKey = null; lastCoalesceAt = 0; };
 
 interface HistorySnapshot {
   nodes: NodeModel[];
@@ -18,14 +28,21 @@ interface PKMState {
   // History (Undo / Redo)
   past: HistorySnapshot[];
   future: HistorySnapshot[];
-  pushSnapshot: () => void;
+  /**
+   * Guarda el estado actual en el historial. Con `coalesceKey`, llamadas consecutivas
+   * con la misma clave dentro de COALESCE_MS se funden en un único paso (p. ej. teclear).
+   */
+  pushSnapshot: (coalesceKey?: string) => void;
   undo: () => void;
   redo: () => void;
   
   // Filter state
-  activeFilterCategories: string[];
-  setActiveFilterCategories: (cats: string[]) => void;
+  /** null = filtro apagado (todo visible). [] = filtro activo sin categorías (todo atenuado). */
+  activeFilterCategories: string[] | null;
+  setActiveFilterCategories: (cats: string[] | null) => void;
   toggleFilterCategory: (cat: string) => void;
+  selectAllFilterCategories: (allCats: string[]) => void;
+  deselectAllFilterCategories: () => void;
   clearFilterCategories: () => void;
 
   // Actions
@@ -33,12 +50,13 @@ interface PKMState {
   clearDocument: () => void;
   setSelectedEntity: (id: string | null, type: 'node' | 'edge' | null) => void;
   
-  addNode: (type: 'individual' | 'cluster' | 'textAnnotation' | 'imageAnnotation', position?: { x: number, y: number }) => void;
+  addNode: (type: NodeType, position?: { x: number, y: number }) => void;
   addEdge: (source: string, target: string) => void;
   
-  updateNodeData: (id: string, data: any) => void;
+  /** `opts.history: false` evita registrar historial (arrastres en curso, recálculos automáticos). */
+  updateNodeData: (id: string, data: any, opts?: UpdateOpts) => void;
   updateNode: (id: string, updates: Partial<NodeModel>) => void;
-  updateEdgeData: (id: string, data: any) => void;
+  updateEdgeData: (id: string, data: any, opts?: UpdateOpts) => void;
   
   updateNodeNotes: (id: string, notes: string) => void;
   updateEdgeNotes: (id: string, notes: string) => void;
@@ -58,27 +76,36 @@ export const useStore = create<PKMState>((set, get) => ({
   past: [],
   future: [],
 
-  activeFilterCategories: [],
+  activeFilterCategories: null,
   setActiveFilterCategories: (cats) => set({ activeFilterCategories: cats }),
   toggleFilterCategory: (cat) => set((state) => {
-    const exists = state.activeFilterCategories.includes(cat);
+    const current = state.activeFilterCategories ?? [];
+    const exists = current.includes(cat);
     return {
-      activeFilterCategories: exists
-        ? state.activeFilterCategories.filter(c => c !== cat)
-        : [...state.activeFilterCategories, cat]
+      activeFilterCategories: exists ? current.filter(c => c !== cat) : [...current, cat]
     };
   }),
-  clearFilterCategories: () => set({ activeFilterCategories: [] }),
+  selectAllFilterCategories: (allCats) => set({ activeFilterCategories: [...allCats] }),
+  deselectAllFilterCategories: () => set({ activeFilterCategories: [] }),
+  clearFilterCategories: () => set({ activeFilterCategories: null }),
 
-  pushSnapshot: () => {
+  pushSnapshot: (coalesceKey) => {
+    const now = Date.now();
+    if (coalesceKey) {
+      const sameBurst = coalesceKey === lastCoalesceKey && now - lastCoalesceAt < COALESCE_MS;
+      lastCoalesceKey = coalesceKey;
+      lastCoalesceAt = now;
+      if (sameBurst) return; // ya hay un snapshot previo a esta ráfaga de cambios
+    } else {
+      resetCoalescing();
+    }
     const { nodes, edges, past } = get();
-    // Guardar copia limpia en el historial (máximo 30 pasos)
     const snapshot: HistorySnapshot = {
       nodes: JSON.parse(JSON.stringify(nodes)),
       edges: JSON.parse(JSON.stringify(edges))
     };
     set({
-      past: [...past.slice(-29), snapshot],
+      past: [...past.slice(-(MAX_HISTORY - 1)), snapshot],
       future: []
     });
   },
@@ -86,6 +113,7 @@ export const useStore = create<PKMState>((set, get) => ({
   undo: () => {
     const { past, future, nodes, edges } = get();
     if (past.length === 0) return;
+    resetCoalescing();
     const previous = past[past.length - 1];
     const newPast = past.slice(0, -1);
     const current: HistorySnapshot = {
@@ -105,6 +133,7 @@ export const useStore = create<PKMState>((set, get) => ({
   redo: () => {
     const { past, future, nodes, edges } = get();
     if (future.length === 0) return;
+    resetCoalescing();
     const next = future[0];
     const newFuture = future.slice(1);
     const current: HistorySnapshot = {
@@ -121,7 +150,7 @@ export const useStore = create<PKMState>((set, get) => ({
     });
   },
   
-  loadDocument: (doc) => set({
+  loadDocument: (doc) => { resetCoalescing(); set({
     documentVersion: doc.documentVersion,
     metadata: doc.metadata,
     nodes: doc.nodes,
@@ -130,10 +159,10 @@ export const useStore = create<PKMState>((set, get) => ({
     selectedEntityType: null,
     past: [],
     future: [],
-    activeFilterCategories: []
-  }),
+    activeFilterCategories: null
+  }); },
   
-  clearDocument: () => set({
+  clearDocument: () => { resetCoalescing(); set({
     metadata: null,
     nodes: [],
     edges: [],
@@ -141,8 +170,8 @@ export const useStore = create<PKMState>((set, get) => ({
     selectedEntityType: null,
     past: [],
     future: [],
-    activeFilterCategories: []
-  }),
+    activeFilterCategories: null
+  }); },
   
   setSelectedEntity: (id, type) => set({
     selectedEntityId: id,
@@ -164,6 +193,8 @@ export const useStore = create<PKMState>((set, get) => ({
           visualPosition = { x: Math.round(position.x - 70), y: Math.round(position.y - 25) };
         } else if (type === 'imageAnnotation') {
           visualPosition = { x: Math.round(position.x - 100), y: Math.round(position.y - 100) };
+        } else if (type === 'arrowAnnotation') {
+          visualPosition = { x: Math.round(position.x - 80), y: Math.round(position.y) };
         } else {
           visualPosition = { x: Math.round(position.x - 40), y: Math.round(position.y - 40) };
         }
@@ -188,7 +219,14 @@ export const useStore = create<PKMState>((set, get) => ({
       } else if (type === 'imageAnnotation') {
         nodeData = {
           visualPosition,
-          visualDimensions: { width: 200, height: 200 }
+          visualDimensions: { width: 200, height: 200 },
+          imageStyle: { shape: 'rounded', zoom: 1, offsetX: 0, offsetY: 0 }
+        };
+      } else if (type === 'arrowAnnotation') {
+        nodeData = {
+          visualPosition,
+          visualDimensions: { width: 160, height: 24 },
+          arrowStyle: { length: 160, angle: 0, thickness: 4, dash: 'solid', head: 'end', color: '#475569' }
         };
       } else if (type === 'cluster') {
         nodeData = {
@@ -224,35 +262,47 @@ export const useStore = create<PKMState>((set, get) => ({
         sourceNodeId: source,
         targetNodeId: target,
         semanticRelationshipType: 'Conexión',
-        data: { contextualNotes: '', arrowDirection: 'none' }
+        data: { contextualNotes: '' }
       };
       return { edges: [...state.edges, newEdge], selectedEntityId: id, selectedEntityType: 'edge' };
     });
   },
 
-  updateNodeData: (id, data) => set((state) => ({
-    nodes: state.nodes.map(n => n.id === id ? { ...n, data: { ...n.data, ...data } } : n)
-  })),
+  updateNodeData: (id, data, opts) => {
+    if (opts?.history !== false) get().pushSnapshot(`node:${id}`);
+    set((state) => ({
+      nodes: state.nodes.map(n => n.id === id ? { ...n, data: { ...n.data, ...data } } : n)
+    }));
+  },
 
   updateNode: (id, updates) => set((state) => ({
     nodes: state.nodes.map(n => n.id === id ? { ...n, ...updates, data: { ...n.data, ...(updates.data || {}) } } : n)
   })),
 
-  updateEdgeData: (id, data) => set((state) => ({
-    edges: state.edges.map(e => e.id === id ? { ...e, ...data } : e)
-  })),
+  updateEdgeData: (id, data, opts) => {
+    if (opts?.history !== false) get().pushSnapshot(`edge:${id}`);
+    set((state) => ({
+      edges: state.edges.map(e => e.id === id ? { ...e, ...data } : e)
+    }));
+  },
   
-  updateNodeNotes: (id, notes) => set((state) => ({
-    nodes: state.nodes.map(n => 
-      n.id === id ? { ...n, data: { ...n.data, historicalNotes: notes } } : n
-    )
-  })),
+  updateNodeNotes: (id, notes) => {
+    get().pushSnapshot(`node:${id}`);
+    set((state) => ({
+      nodes: state.nodes.map(n => 
+        n.id === id ? { ...n, data: { ...n.data, historicalNotes: notes } } : n
+      )
+    }));
+  },
   
-  updateEdgeNotes: (id, notes) => set((state) => ({
-    edges: state.edges.map(e => 
-      e.id === id ? { ...e, data: { ...e.data, contextualNotes: notes } } : e
-    )
-  })),
+  updateEdgeNotes: (id, notes) => {
+    get().pushSnapshot(`edge:${id}`);
+    set((state) => ({
+      edges: state.edges.map(e => 
+        e.id === id ? { ...e, data: { ...e.data, contextualNotes: notes } } : e
+      )
+    }));
+  },
 
   removeNode: (id) => {
     get().pushSnapshot();

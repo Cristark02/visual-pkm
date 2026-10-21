@@ -11,3 +11,30 @@ html, body, #root {
 
 .react-flow__edgelabel-renderer { z-index: 1000 !important; }
 
+
+/* === Hitbox estricta de grupos (#26) ===
+   React Flow marca el contenedor del nodo con pointer-events:all inline, lo que convertía
+   al grupo en un rectángulo clicable. Lo desactivamos: solo la forma SVG (que declara
+   pointer-events:all) y los controles reciben eventos; el resto cae al lienzo. */
+.react-flow__node-cluster,
+.react-flow__node-arrowAnnotation {
+  pointer-events: none !important;
+}
+
+/* === Cursor estándar siempre (#26) === */
+.react-flow__pane,
+.react-flow__pane.draggable,
+.react-flow__pane.dragging,
+.react-flow__pane.selection,
+.react-flow__node,
+.react-flow__node.draggable,
+.react-flow__node *,
+.react-flow__edge,
+.react-flow__edge *,
+.react-flow__nodesselection-rect,
+.react-flow__selection,
+.react-flow__handle,
+.react-flow__resize-control {
+  cursor: default !important;
+}
+.react-flow__node textarea { cursor: text !important; } /* única excepción: editar texto */

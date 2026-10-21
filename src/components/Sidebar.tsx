@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { X, Camera, Search, Trash2, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, ArrowLeftRight, Minus } from 'lucide-react';
+import { X, Camera, Search, Trash2, ChevronDown, ChevronUp, ArrowRight, ArrowLeft, ArrowLeftRight } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { saveDocument } from '../lib/fsManager';
 import { DEFAULT_TAXONOMY, getTaxonomyRelation } from '../config/taxonomy';
@@ -359,79 +359,61 @@ export default function Sidebar() {
         {/* Edge Specific Controls: Type, Direction, Curvature */}
         {isEdge && (
           <div className="space-y-4 shrink-0">
-            {/* Dirección de Flechas */}
-            <div className="bg-indigo-50/30 border border-indigo-100/60 rounded-2xl p-4 space-y-2">
-              <label className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider block">Sentido / Flecha de la Relación</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'none', label: 'Sin flecha', icon: Minus },
-                  { id: 'forward', label: 'Hacia B', icon: ArrowRight },
-                  { id: 'backward', label: 'Hacia A', icon: ArrowLeft },
-                  { id: 'mutual', label: 'Mutua / Ambas', icon: ArrowLeftRight },
-                ].map(opt => {
-                  const Icon = opt.icon;
-                  const currentDir = (entity as EdgeModel).data?.arrowDirection || 'none';
-                  const isSelected = currentDir === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => {
-                        updateEdgeData(entity.id, { 
-                          data: { ...(entity as EdgeModel).data, arrowDirection: opt.id } 
-                        });
-                        triggerSave();
-                      }}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
-                        isSelected 
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
-                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <Icon size={14} />
-                      <span className="truncate">{opt.label}</span>
-                    </button>
-                  );
-                })}
+            {/* Dirección de la flecha: solo en relaciones que ya llevan flecha por defecto (Mentor, Profesor...) */}
+            {getTaxonomyRelation((entity as EdgeModel).semanticRelationshipType).arrow && (
+              <div className="bg-indigo-50/30 border border-indigo-100/60 rounded-2xl p-4 space-y-2">
+                <label className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider block">Sentido de la Flecha</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'forward', label: 'Hacia B', icon: ArrowRight },
+                    { id: 'backward', label: 'Hacia A', icon: ArrowLeft },
+                    { id: 'mutual', label: 'Ambas', icon: ArrowLeftRight },
+                  ].map(opt => {
+                    const Icon = opt.icon;
+                    const stored = (entity as EdgeModel).data?.arrowDirection;
+                    const currentDir = !stored || stored === 'none' ? 'forward' : stored;
+                    const isSelected = currentDir === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => {
+                          updateEdgeData(entity.id, { 
+                            data: { ...(entity as EdgeModel).data, arrowDirection: opt.id } 
+                          });
+                          triggerSave();
+                        }}
+                        className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-bold border transition-all ${
+                          isSelected 
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                            : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <Icon size={14} />
+                        <span className="truncate">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Curvatura de la línea */}
-            <div className="bg-gray-50/60 border border-gray-200/60 rounded-2xl p-4 space-y-2">
-              <div className="flex justify-between items-center text-xs font-bold text-gray-600">
-                <span className="uppercase tracking-wider">Curvatura de la Línea</span>
-                <span className="text-indigo-600 font-mono">{((entity as EdgeModel).data?.curvature || 0)}px</span>
-              </div>
-              <input 
-                type="range"
-                min="-100"
-                max="100"
-                step="5"
-                value={(entity as EdgeModel).data?.curvature || 0}
-                onChange={e => {
-                  const val = parseInt(e.target.value);
-                  updateEdgeData(entity.id, {
-                    data: { ...(entity as EdgeModel).data, curvature: val }
-                  });
+            {/* Curvatura: se ajusta arrastrando el punto de la línea en el lienzo (sin slider) */}
+            <div className="bg-gray-50/60 border border-gray-200/60 rounded-2xl p-4 flex items-center justify-between gap-3">
+              <p className="text-[11px] text-gray-500 leading-snug">
+                Arrastra el <span className="font-bold text-indigo-600">punto de la línea</span> en el lienzo para curvarla.
+              </p>
+              <button 
+                type="button" 
+                disabled={!((entity as EdgeModel).data?.curvature)}
+                onClick={() => {
+                  updateEdgeData(entity.id, { data: { ...(entity as EdgeModel).data, curvature: 0 } });
+                  triggerSave();
                 }}
-                onMouseUp={triggerSave}
-                onTouchEnd={triggerSave}
-                className="w-full accent-indigo-600 cursor-pointer"
-              />
-              <div className="flex justify-between text-[10px] text-gray-400">
-                <span>Curva Izq</span>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    updateEdgeData(entity.id, { data: { ...(entity as EdgeModel).data, curvature: 0 } });
-                    triggerSave();
-                  }}
-                  className="hover:text-indigo-600 font-bold"
-                >
-                  Recta (0)
-                </button>
-                <span>Curva Der</span>
-              </div>
+                className="shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-indigo-600 hover:border-indigo-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Enderezar
+              </button>
             </div>
 
             {/* Tipo de Relación */}
@@ -462,7 +444,16 @@ export default function Sidebar() {
                         <div 
                           key={rel.id} 
                           onClick={() => {
-                            updateEdgeData(entity.id, { semanticRelationshipType: rel.id });
+                            // Al cambiar de tipo: las relaciones con flecha arrancan "Hacia B";
+                            // las demás no llevan flecha, así que se descarta el sentido guardado.
+                            const prevData = (entity as EdgeModel).data || {};
+                            const nextData = { ...prevData };
+                            if (rel.arrow) {
+                              if (!nextData.arrowDirection || nextData.arrowDirection === 'none') nextData.arrowDirection = 'forward';
+                            } else {
+                              delete nextData.arrowDirection;
+                            }
+                            updateEdgeData(entity.id, { semanticRelationshipType: rel.id, data: nextData });
                             triggerSave();
                           }}
                           className={`flex items-center px-3 py-2 cursor-pointer hover:bg-indigo-50 transition-colors text-sm ${
@@ -567,7 +558,7 @@ export default function Sidebar() {
         <button 
           type="button"
           onClick={() => {
-            const typeName = isEdge ? 'vínculo' : (isCluster ? 'grupo' : 'persona');
+            const typeName = isEdge ? 'vínculo' : (isCluster ? 'grupo' : (isIndividual ? 'persona' : 'elemento'));
             if (window.confirm(`¿Estás seguro de que deseas eliminar este ${typeName}?`)) {
               if (isEdge) useStore.getState().removeEdge(entity.id);
               else useStore.getState().removeNode(entity.id);
@@ -575,7 +566,7 @@ export default function Sidebar() {
           }}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-red-600 bg-white hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
         >
-          <Trash2 size={16} /> Eliminar {isEdge ? 'Vínculo' : (isCluster ? 'Grupo' : 'Persona')}
+          <Trash2 size={16} /> Eliminar {isEdge ? 'Vínculo' : (isCluster ? 'Grupo' : (isIndividual ? 'Persona' : 'Elemento'))}
         </button>
       </div>
     </div>
