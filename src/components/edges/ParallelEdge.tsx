@@ -6,6 +6,9 @@ import { useStore } from '../../store/useStore';
 
 const SPACING = 35;
 
+type CP = { t: number; d: number };
+type ControlPoints = [CP, CP];
+
 const ParallelEdge = ({
   id,
   source,
@@ -40,82 +43,80 @@ const ParallelEdge = ({
   let path = '';
   let labelX = 0;
   let labelY = 0;
-  // Manejador de curvatura: punto medio real de la curva y datos para invertir el arrastre
-  let handleX = (sourceX + targetX) / 2;
-  let handleY = (sourceY + targetY) / 2;
-  let chordMidX = handleX;
-  let chordMidY = handleY;
-  let normalX = 0;
-  let normalY = 0;
-  let baseOffset = 0; // desplazamiento que NO viene del usuario (separación de paralelas)
-  let curveScale = 2; // quad: offset_control = 2 * distancia_del_punto_medio ; zigzag: 1
 
   const dx = targetX - sourceX;
   const dy = targetY - sourceY;
   const length = Math.sqrt(dx * dx + dy * dy);
+  const nx = length === 0 ? 0 : -dy / length;
+  const ny = length === 0 ? 0 : dx / length;
+  const offsetDistance = offsetIndex * SPACING;
+
+  // Puntos de control de la Bézier cúbica, en el marco de la cuerda: posición = S + cuerda·t + normal·d.
+  // Son libres (t y d sin límites), de modo que la curva se puede doblar a placer.
+  // Si el usuario aún no los ha movido, se derivan de la curvatura heredada para no cambiar el dibujo.
+  const userCtrl: ControlPoints | undefined = data?.controlPoints;
+  const legacyOffset = isZigZag
+    ? offsetDistance + userCurvature
+    : (offsetIndex === 0 ? 0 : offsetDistance * 2) + userCurvature;
+  const legacyD = isZigZag ? legacyOffset : (2 / 3) * legacyOffset; // quad → cúbica
+  const ctrl: ControlPoints = userCtrl ?? [{ t: 1 / 3, d: legacyD }, { t: 2 / 3, d: legacyD }];
+  const toPoint = (c: CP) => ({ x: sourceX + dx * c.t + nx * c.d, y: sourceY + dy * c.t + ny * c.d });
+  const c1 = toPoint(ctrl[0]);
+  const c2 = toPoint(ctrl[1]);
 
   if (length === 0) {
     path = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
     labelX = sourceX;
     labelY = sourceY;
   } else {
-    const nx = -dy / length;
-    const ny = dx / length;
-
-    const spacing = SPACING;
-    const offsetDistance = offsetIndex * spacing;
-    normalX = nx;
-    normalY = ny;
-    chordMidX = sourceX + dx / 2;
-    chordMidY = sourceY + dy / 2;
-
     if (isZigZag) {
       const segments = 10;
       let zigZagPath = `M ${sourceX} ${sourceY}`;
       for (let i = 1; i <= segments; i++) {
         const t = i / segments;
-        const baseX = sourceX + dx * t;
-        const baseY = sourceY + dy * t;
-        
-        const zigFactor = (i % 2 === 0 ? 1 : -1) * 10;
-        const px = baseX + nx * (offsetDistance + userCurvature + zigFactor);
-        const py = baseY + ny * (offsetDistance + userCurvature + zigFactor);
-        
+        let baseX: number, baseY: number, px: number, py: number;
+        const zig = (i % 2 === 0 ? 1 : -1) * 10;
+        if (userCtrl) {
+          // zigzag a lo largo de la cúbica libre
+          const u = 1 - t;
+          baseX = u * u * u * sourceX + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * targetX;
+          baseY = u * u * u * sourceY + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * targetY;
+          const tx = 3 * u * u * (c1.x - sourceX) + 6 * u * t * (c2.x - c1.x) + 3 * t * t * (targetX - c2.x);
+          const ty = 3 * u * u * (c1.y - sourceY) + 6 * u * t * (c2.y - c1.y) + 3 * t * t * (targetY - c2.y);
+          const tl = Math.hypot(tx, ty) || 1;
+          px = baseX + (-ty / tl) * zig;
+          py = baseY + (tx / tl) * zig;
+        } else {
+          baseX = sourceX + dx * t;
+          baseY = sourceY + dy * t;
+          px = baseX + nx * (legacyOffset + zig);
+          py = baseY + ny * (legacyOffset + zig);
+        }
         zigZagPath += ` L ${px} ${py}`;
-        
         if (i === 5) {
           labelX = px;
           labelY = py;
         }
       }
       path = zigZagPath;
-      curveScale = 1;
-      baseOffset = offsetDistance;
-      handleX = sourceX + dx / 2 + nx * (offsetDistance + userCurvature);
-      handleY = sourceY + dy / 2 + ny * (offsetDistance + userCurvature);
+    } else if (userCtrl) {
+      path = `M ${sourceX},${sourceY} C ${c1.x},${c1.y} ${c2.x},${c2.y} ${targetX},${targetY}`;
+      labelX = (sourceX + 3 * c1.x + 3 * c2.x + targetX) / 8;
+      labelY = (sourceY + 3 * c1.y + 3 * c2.y + targetY) / 8;
     } else {
-      baseOffset = offsetIndex === 0 ? 0 : offsetDistance * 2;
-      const baseCurveOffset = baseOffset + userCurvature;
-      
       const mx = sourceX + dx / 2;
       const my = sourceY + dy / 2;
 
-      if (baseCurveOffset === 0) {
+      if (legacyOffset === 0) {
         path = `M ${sourceX},${sourceY} L ${targetX},${targetY}`;
         labelX = mx;
         labelY = my;
-        handleX = mx;
-        handleY = my;
       } else {
-        const cx = mx + nx * baseCurveOffset;
-        const cy = my + ny * baseCurveOffset;
-
+        const cx = mx + nx * legacyOffset;
+        const cy = my + ny * legacyOffset;
         path = `M ${sourceX},${sourceY} Q ${cx},${cy} ${targetX},${targetY}`;
-        
         labelX = 0.25 * sourceX + 0.5 * cx + 0.25 * targetX;
         labelY = 0.25 * sourceY + 0.5 * cy + 0.25 * targetY;
-        handleX = labelX;
-        handleY = labelY;
       }
     }
 
@@ -124,15 +125,10 @@ const ParallelEdge = ({
     if (length < 240) {
       let pushNx = nx;
       let pushNy = ny;
-      
-      // Preferimos empujar hacia "arriba" (Y negativo) para evitar los nombres de los nodos que cuelgan hacia abajo.
-      // O si es una línea muy vertical, empujamos hacia la derecha o izquierda.
       if (pushNy > 0.1) {
         pushNx = -pushNx;
         pushNy = -pushNy;
       }
-
-      // Cuanto más cerca estén los nodos, más empujamos la etiqueta hacia afuera (hasta 45px)
       const pushDistance = (1 - (length / 240)) * 45;
       labelX += pushNx * pushDistance;
       labelY += pushNy * pushDistance;
@@ -160,24 +156,30 @@ const ParallelEdge = ({
   };
   const groupOpacity = filterState === 'dim' ? 0.12 : 1;
 
-  // --- Arrastre del manejador de curvatura (ratón y táctil) ---
-  // Se escucha en `window` en vez de usar pointer capture: al actualizar la curvatura React
+  // --- Arrastre de los manejadores de la curva (ratón y táctil) ---
+  // Se escucha en `window` en vez de usar pointer capture: al actualizar la curva React
   // puede recrear el elemento del manejador, y la captura se perdería a mitad del gesto.
-  const onHandleDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onHandleDown = (index: 0 | 1) => (e: React.PointerEvent<HTMLDivElement>) => {
     e.stopPropagation();
     e.preventDefault();
     // Geometría congelada al empezar: no depende de re-renders durante el arrastre
-    const g = { midX: chordMidX, midY: chordMidY, nx: normalX, ny: normalY, scale: curveScale, base: baseOffset };
+    const g = { sx: sourceX, sy: sourceY, dx, dy, nx, ny, len2: dx * dx + dy * dy, ctrl: [{ ...ctrl[0] }, { ...ctrl[1] }] as ControlPoints };
     useStore.getState().pushSnapshot();
 
     const onMove = (ev: PointerEvent) => {
+      if (g.len2 === 0) return;
       const p = flow.screenToFlowPosition({ x: ev.clientX, y: ev.clientY });
-      const d = (p.x - g.midX) * g.nx + (p.y - g.midY) * g.ny;
-      let curvature = Math.round(d * g.scale - g.base);
-      if (Math.abs(curvature) < 8) curvature = 0; // imán a "recta"
+      const rx = p.x - g.sx;
+      const ry = p.y - g.sy;
+      const next: ControlPoints = [{ ...g.ctrl[0] }, { ...g.ctrl[1] }];
+      next[index] = {
+        t: Math.round(((rx * g.dx + ry * g.dy) / g.len2) * 1000) / 1000,
+        d: Math.round((rx * g.nx + ry * g.ny) * 10) / 10,
+      };
+      g.ctrl = next;
       const edge = useStore.getState().edges.find(x => x.id === id);
       if (!edge) return;
-      useStore.getState().updateEdgeData(id, { data: { ...edge.data, curvature } }, { history: false });
+      useStore.getState().updateEdgeData(id, { data: { ...edge.data, controlPoints: next } }, { history: false });
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
@@ -209,29 +211,39 @@ const ParallelEdge = ({
         />
       </g>
       {isSelected && length > 0 && (
-        <EdgeLabelRenderer>
-          {/* Manejador de curvatura: HTML por encima de la etiqueta para poder agarrarlo siempre */}
-          <div
-            data-export-ignore="true"
-            className="nodrag nopan"
-            onPointerDown={onHandleDown}
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${handleX}px,${handleY}px) scale(${k})`,
-              width: 44,
-              height: 44,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              pointerEvents: 'all',
-              touchAction: 'none',
-              zIndex: 1100,
-            }}
-          >
-            <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', border: '3px solid #4f46e5', boxShadow: '0 1px 4px rgba(0,0,0,0.35)' }} />
-          </div>
-        </EdgeLabelRenderer>
+        <>
+          {/* Líneas guía de la Bézier: extremo → manejador */}
+          <g data-export-ignore="true" style={{ pointerEvents: 'none' }}>
+            <line x1={sourceX} y1={sourceY} x2={c1.x} y2={c1.y} stroke="#4f46e5" strokeOpacity={0.55} strokeWidth={1.5 * k} strokeDasharray={`${4 * k} ${4 * k}`} />
+            <line x1={targetX} y1={targetY} x2={c2.x} y2={c2.y} stroke="#4f46e5" strokeOpacity={0.55} strokeWidth={1.5 * k} strokeDasharray={`${4 * k} ${4 * k}`} />
+          </g>
+          <EdgeLabelRenderer>
+            {/* Dos manejadores libres, HTML por encima de la etiqueta para poder agarrarlos siempre */}
+            {([c1, c2] as const).map((pt, i) => (
+              <div
+                key={i}
+                data-export-ignore="true"
+                className="nodrag nopan"
+                onPointerDown={onHandleDown(i as 0 | 1)}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  position: 'absolute',
+                  transform: `translate(-50%, -50%) translate(${pt.x}px,${pt.y}px) scale(${k})`,
+                  width: 44,
+                  height: 44,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  pointerEvents: 'all',
+                  touchAction: 'none',
+                  zIndex: 1100,
+                }}
+              >
+                <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', border: '3px solid #4f46e5', boxShadow: '0 1px 4px rgba(0,0,0,0.35)' }} />
+              </div>
+            ))}
+          </EdgeLabelRenderer>
+        </>
       )}
       {!isDuplicateLabel && (
         <EdgeLabelRenderer>

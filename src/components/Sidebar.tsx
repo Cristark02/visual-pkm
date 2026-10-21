@@ -401,13 +401,13 @@ export default function Sidebar() {
             {/* Curvatura: se ajusta arrastrando el punto de la línea en el lienzo (sin slider) */}
             <div className="bg-gray-50/60 border border-gray-200/60 rounded-2xl p-4 flex items-center justify-between gap-3">
               <p className="text-[11px] text-gray-500 leading-snug">
-                Arrastra el <span className="font-bold text-indigo-600">punto de la línea</span> en el lienzo para curvarla.
+                Arrastra los <span className="font-bold text-indigo-600">dos puntos</span> de la línea en el lienzo para doblarla a tu gusto.
               </p>
               <button 
                 type="button" 
-                disabled={!((entity as EdgeModel).data?.curvature)}
+                disabled={!((entity as EdgeModel).data?.curvature || (entity as EdgeModel).data?.controlPoints)}
                 onClick={() => {
-                  updateEdgeData(entity.id, { data: { ...(entity as EdgeModel).data, curvature: 0 } });
+                  updateEdgeData(entity.id, { data: { ...(entity as EdgeModel).data, curvature: 0, controlPoints: undefined } });
                   triggerSave();
                 }}
                 className="shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:text-indigo-600 hover:border-indigo-200 disabled:opacity-40 disabled:cursor-not-allowed"

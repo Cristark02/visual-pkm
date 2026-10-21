@@ -77,7 +77,13 @@ export interface EdgeData {
   };
   contextualNotes?: string;
   arrowDirection?: 'none' | 'forward' | 'backward' | 'mutual';
+  /** Curvatura heredada (Bézier cuadrática). Se ignora si hay `controlPoints`. */
   curvature?: number;
+  /**
+   * Puntos de control libres de una Bézier cúbica, en el marco de la cuerda:
+   * posición = origen + (destino − origen)·t + normal·d. `t` y `d` no tienen límites.
+   */
+  controlPoints?: [{ t: number; d: number }, { t: number; d: number }];
 }
 
 export interface EdgeModel {
