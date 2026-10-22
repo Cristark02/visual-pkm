@@ -6,9 +6,11 @@ import { useStore } from '../store/useStore';
 interface FilterPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Variante táctil: hoja sobre el dock y filas grandes. */
+  touch?: boolean;
 }
 
-const FilterPanel = ({ isOpen, onClose }: FilterPanelProps) => {
+const FilterPanel = ({ isOpen, onClose, touch = false }: FilterPanelProps) => {
   const { activeFilterCategories, toggleFilterCategory, clearFilterCategories, selectAllFilterCategories, deselectAllFilterCategories, edges } = useStore();
   const selected = activeFilterCategories ?? [];
   const filterOn = activeFilterCategories !== null;
@@ -27,7 +29,12 @@ const FilterPanel = ({ isOpen, onClose }: FilterPanelProps) => {
   });
 
   return (
-    <div className="absolute top-16 right-4 sm:right-6 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200/80 p-4 w-72 sm:w-80 z-40 animate-in fade-in slide-in-from-top-4 duration-200">
+    <div
+      {...(touch ? { 'data-bottom-ui': true } : {})}
+      className={touch
+        ? 'absolute inset-x-2 bottom-[92px] bg-white rounded-3xl shadow-2xl border border-gray-200/80 p-4 z-[45] animate-in fade-in slide-in-from-bottom-4 duration-200'
+        : 'absolute top-16 right-4 sm:right-6 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-200/80 p-4 w-72 sm:w-80 z-40 animate-in fade-in slide-in-from-top-4 duration-200'}
+    >
       <div className="flex items-center justify-between pb-3 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <Filter size={16} className="text-indigo-600" />
@@ -58,7 +65,7 @@ const FilterPanel = ({ isOpen, onClose }: FilterPanelProps) => {
         </button>
       </div>
 
-      <div className="py-3 space-y-1.5 max-h-60 overflow-y-auto overscroll-contain">
+      <div className={`py-3 space-y-1.5 overflow-y-auto overscroll-contain ${touch ? "max-h-[38vh]" : "max-h-60"}`}>
         {categoryStats.map(cat => {
           const isSelected = selected.includes(cat.name);
           return (
@@ -66,7 +73,7 @@ const FilterPanel = ({ isOpen, onClose }: FilterPanelProps) => {
               key={cat.name}
               type="button"
               onClick={() => toggleFilterCategory(cat.name)}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3 ${touch ? 'py-3 min-h-[48px]' : 'py-2'} rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 isSelected 
                   ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' 
                   : 'hover:bg-gray-50 text-gray-700 border border-transparent'

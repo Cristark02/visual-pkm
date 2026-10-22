@@ -38,3 +38,43 @@ html, body, #root {
   cursor: default !important;
 }
 .react-flow__node textarea { cursor: text !important; } /* única excepción: editar texto */
+
+/* ==========================================================================
+   Interfaz táctil (móvil y tablet): clase `touch-ui` en <html>, activada desde App
+   ========================================================================== */
+html, body { overscroll-behavior: none; }
+.react-flow { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+.touch-ui .react-flow,
+.touch-ui .react-flow__node,
+.touch-ui .react-flow__pane { -webkit-user-select: none; user-select: none; touch-action: none; }
+
+/* Conectar con un toque: el centro de la persona deja de ser zona de arrastre para conectar,
+   así arrastrar una persona siempre la mueve. La unión se crea con "Conectar" + toque. */
+.touch-ui .react-flow__node-individual .react-flow__handle { pointer-events: none !important; }
+.touch-ui .connect-hint { display: none; }
+
+/* Modo "Conectar": resalta el origen y las personas candidatas */
+@keyframes connect-pulse { 0%,100% { filter: drop-shadow(0 0 0 rgba(79,70,229,0)); } 50% { filter: drop-shadow(0 0 10px rgba(79,70,229,0.85)); } }
+.react-flow__node.connect-candidate { animation: connect-pulse 1.2s ease-in-out infinite; }
+.react-flow__node.connect-source { filter: drop-shadow(0 0 12px rgba(79,70,229,0.95)); }
+
+/* Objetivos táctiles de al menos 44px */
+.touch-ui .react-flow__controls { box-shadow: 0 4px 14px rgba(0,0,0,0.12); border-radius: 14px; overflow: hidden; }
+.touch-ui .react-flow__controls-button { width: 44px !important; height: 44px !important; }
+.touch-ui .react-flow__controls { margin-bottom: 150px; }
+.touch-ui .react-flow__resize-control.handle { width: 28px !important; height: 28px !important; }
+.touch-ui .react-flow__node .nodrag button,
+.touch-ui .react-flow__node button { min-width: 40px; min-height: 40px; }
+.touch-ui .arrow-handle { r: 15px; }
+.touch-ui .react-flow__edge-interaction { stroke-width: 40px; }
+.touch-ui .sidebar-panel button { min-height: 44px; }
+.touch-ui .sidebar-panel button.rounded-full { min-width: 40px; min-height: 40px; }
+.touch-ui .sidebar-panel input:not([type=checkbox]):not([type=radio]),
+.touch-ui .sidebar-panel select,
+.touch-ui .sidebar-panel textarea { min-height: 44px; }
+
+/* Evita el zoom automático de iOS al enfocar campos (necesita >=16px) */
+.touch-ui input, .touch-ui select, .touch-ui textarea { font-size: 16px !important; }
+
+/* La mini-mapa estorba en pantallas táctiles */
+.touch-ui .react-flow__minimap { display: none; }

@@ -62,6 +62,8 @@ interface PKMState {
   updateEdgeNotes: (id: string, notes: string) => void;
 
   removeNode: (id: string) => void;
+  /** Borra varios nodos en un único paso de historial. */
+  removeNodes: (ids: string[]) => void;
   removeEdge: (id: string) => void;
 }
 
@@ -329,6 +331,22 @@ export const useStore = create<PKMState>((set, get) => ({
         selectedEntityType: state.selectedEntityId === id ? null : state.selectedEntityType
       };
     });
+  },
+
+  removeNodes: (ids) => {
+    if (ids.length === 0) return;
+    get().pushSnapshot();
+    const gone = new Set(ids);
+    set((state) => ({
+      nodes: state.nodes
+        .filter(n => !gone.has(n.id))
+        .map(n => (n.data.clusterIds?.some(c => gone.has(c))
+          ? { ...n, data: { ...n.data, clusterIds: n.data.clusterIds!.filter(c => !gone.has(c)) } }
+          : n)),
+      edges: state.edges.filter(e => !gone.has(e.sourceNodeId) && !gone.has(e.targetNodeId)),
+      selectedEntityId: state.selectedEntityId && gone.has(state.selectedEntityId) ? null : state.selectedEntityId,
+      selectedEntityType: state.selectedEntityId && gone.has(state.selectedEntityId) ? null : state.selectedEntityType,
+    }));
   },
 
   removeEdge: (id) => {

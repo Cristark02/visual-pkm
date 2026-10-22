@@ -183,14 +183,14 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
             <circle
               cx={length} cy={cy} r={9}
               fill="#ffffff" stroke="#4f46e5" strokeWidth={2.5}
-              className="nodrag nopan"
+              className="nodrag nopan arrow-handle"
               style={{ pointerEvents: 'all', touchAction: 'none' }}
               onPointerDown={down('tip')} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
             />
             <circle
               cx={0} cy={cy} r={9}
               fill="#ffffff" stroke="#4f46e5" strokeWidth={2.5}
-              className="nodrag nopan"
+              className="nodrag nopan arrow-handle"
               style={{ pointerEvents: 'all', touchAction: 'none' }}
               onPointerDown={down('tail')} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
             />

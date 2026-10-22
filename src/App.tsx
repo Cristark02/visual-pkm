@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useUI } from './store/useUI';
+import { useUIMode } from './lib/useMedia';
+import Dock from './components/touch/Dock';
+import PropertiesSheet from './components/touch/PropertiesSheet';
 import { useStore } from './store/useStore';
 import { openDocument, currentFileHandle, parseDocument } from './lib/fsManager';
-import { FileJson, AlertCircle, Download, Plus, Info, ExternalLink, UploadCloud, X, UserPlus, FolderPlus } from 'lucide-react';
+import { FileJson, AlertCircle, Download, Plus, Info, ExternalLink, UploadCloud, UserPlus, FolderPlus, Undo2, Redo2, MoreVertical, LogOut } from 'lucide-react';
 import type { VisualPkmDocument } from './types/store';
 import { ReactFlowProvider } from 'reactflow';
 
@@ -13,7 +17,7 @@ import { exportToVectorPDF } from './lib/pdfExporter';
 import { placeNode } from './lib/placeNode';
 
 function App() {
-  const { metadata, nodes, loadDocument, clearDocument, selectedEntityId, selectedEntityType } = useStore();
+  const { metadata, nodes, loadDocument, clearDocument, selectedEntityId } = useStore();
   const [error, setError] = useState<string | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
@@ -30,7 +34,13 @@ function App() {
   };
 
   const [showCloseModal, setShowCloseModal] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const mode = useUIMode();
+  const touchUI = mode !== 'desktop';
+  const setSheet = useUI(st => st.setSheet);
+  const menuOpen = useUI(st => st.menuOpen);
+  const connectFrom = useUI(st => st.connectFrom);
+  const setMenuOpen = useUI(st => st.setMenuOpen);
+  const { past, future } = useStore();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   useEffect(() => {
@@ -56,11 +66,15 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Tamaños de objetivo táctil y ajustes de interfaz para móvil/tablet (ver index.css)
   useEffect(() => {
-    // Cuando cambia la selección, por defecto escondemos el sidebar completo en móvil
-    // para dejar que el usuario manipule el nodo (resize, drag) libremente.
-    setMobileSidebarOpen(false);
-  }, [selectedEntityId]);
+    document.documentElement.classList.toggle('touch-ui', touchUI);
+  }, [touchUI]);
+
+  // Sin selección no hay hoja de propiedades
+  useEffect(() => {
+    if (!selectedEntityId) setSheet('closed');
+  }, [selectedEntityId, setSheet]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -278,124 +292,126 @@ function App() {
   return (
     <>
       <div className="h-screen w-screen flex flex-col bg-[#F8F9FA] overflow-hidden font-sans">
-        <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-3 sm:px-6 py-2 sm:py-3 flex flex-wrap sm:flex-nowrap items-center justify-between shadow-sm z-20 shrink-0 gap-2">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-inner">
-              <ExternalLink size={14} className="text-white sm:hidden" />
-              <ExternalLink size={16} className="text-white hidden sm:block" />
+        {touchUI ? (
+          <header className="bg-white/90 backdrop-blur-md border-b border-gray-200/50 px-3 flex items-center justify-between shadow-sm z-30 shrink-0 gap-2 relative" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))', paddingBottom: 8 }}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-inner shrink-0">
+                <ExternalLink size={16} className="text-white" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="font-bold text-gray-800 text-base leading-tight truncate">Social-Link</h1>
+                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider truncate">{nodes.length} nodos</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold text-gray-800 text-sm sm:text-base leading-tight">Social-Link</h1>
-              <p className="hidden sm:block text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Vault: {metadata.vaultOwner} • {nodes.length} Nodos</p>
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => useStore.getState().undo()} disabled={past.length === 0} aria-label="Deshacer"
+                className={`w-11 h-11 rounded-xl flex items-center justify-center active:scale-90 transition-transform ${past.length ? 'text-gray-700' : 'text-gray-300'}`}>
+                <Undo2 size={22} />
+              </button>
+              <button type="button" onClick={() => useStore.getState().redo()} disabled={future.length === 0} aria-label="Rehacer"
+                className={`w-11 h-11 rounded-xl flex items-center justify-center active:scale-90 transition-transform ${future.length ? 'text-gray-700' : 'text-gray-300'}`}>
+                <Redo2 size={22} />
+              </button>
+              <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Más opciones"
+                className="w-11 h-11 rounded-xl flex items-center justify-center text-gray-700 active:scale-90 transition-transform">
+                <MoreVertical size={22} />
+              </button>
             </div>
-          </div>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-3 top-full mt-1 z-50 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 p-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <button type="button" onClick={() => { setMenuOpen(false); handleExportZIP(); }} className="w-full min-h-[48px] px-3 rounded-xl flex items-center gap-3 text-sm font-bold text-gray-700 active:bg-gray-100">
+                    <Download size={18} className="text-indigo-600" /> Respaldar ZIP
+                  </button>
+                  <button type="button" onClick={() => { setMenuOpen(false); exportToVectorPDF(); }} className="w-full min-h-[48px] px-3 rounded-xl flex items-center gap-3 text-sm font-bold text-gray-700 active:bg-gray-100">
+                    <Download size={18} className="text-green-600" /> Exportar PDF
+                  </button>
+                  <button type="button" onClick={() => { setMenuOpen(false); handleCloseRequest(); }} className="w-full min-h-[48px] px-3 rounded-xl flex items-center gap-3 text-sm font-bold text-red-600 active:bg-red-50">
+                    <LogOut size={18} /> Salir
+                  </button>
+                </div>
+              </>
+            )}
+          </header>
+        ) : (
+          <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-3 sm:px-6 py-2 sm:py-3 flex flex-wrap sm:flex-nowrap items-center justify-between shadow-sm z-20 shrink-0 gap-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-inner">
+                <ExternalLink size={14} className="text-white sm:hidden" />
+                <ExternalLink size={16} className="text-white hidden sm:block" />
+              </div>
+              <div>
+                <h1 className="font-bold text-gray-800 text-sm sm:text-base leading-tight">Social-Link</h1>
+                <p className="hidden sm:block text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Vault: {metadata.vaultOwner} • {nodes.length} Nodos</p>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-1 sm:gap-2">
-            {/* Botones de acción rápida siempre accesibles en móvil */}
-            <button 
-              type="button"
-              onClick={() => placeNode('individual')}
-              className="sm:hidden flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-full border border-blue-200 shadow-xs"
-              title="Añadir Persona"
-            >
-              <UserPlus size={13} /> Persona
-            </button>
-            <button 
-              type="button"
-              onClick={() => placeNode('cluster')}
-              className="sm:hidden flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-full border border-purple-200 shadow-xs"
-              title="Añadir Grupo"
-            >
-              <FolderPlus size={13} /> Grupo
-            </button>
+            <div className="flex items-center gap-1 sm:gap-2">
+              {/* Botones de acción rápida siempre accesibles en móvil */}
+              <button 
+                type="button"
+                onClick={() => placeNode('individual')}
+                className="sm:hidden flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-full border border-blue-200 shadow-xs"
+                title="Añadir Persona"
+              >
+                <UserPlus size={13} /> Persona
+              </button>
+              <button 
+                type="button"
+                onClick={() => placeNode('cluster')}
+                className="sm:hidden flex items-center gap-1 text-[11px] font-bold text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-full border border-purple-200 shadow-xs"
+                title="Añadir Grupo"
+              >
+                <FolderPlus size={13} /> Grupo
+              </button>
 
-            <button 
-              onClick={handleExportZIP}
-              className="flex items-center gap-1 sm:gap-2 text-[11px] sm:text-xs font-semibold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 px-2 sm:px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-indigo-200"
-              title="Respaldar ZIP"
-            >
-              <Download size={14} /> <span className="hidden sm:inline">Respaldar</span>
-            </button>
-            <button 
-              onClick={exportToVectorPDF}
-              className="flex items-center gap-1 sm:gap-2 text-[11px] sm:text-xs font-semibold text-gray-600 hover:text-green-600 hover:bg-green-50 px-2 sm:px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-green-200"
-              title="Exportar PDF"
-            >
-              <Download size={14} /> <span className="hidden sm:inline">PDF</span>
-            </button>
-            <button 
-              onClick={handleCloseRequest}
-              className="text-[11px] sm:text-xs font-semibold text-red-500 hover:text-white bg-red-50 hover:bg-red-500 px-3 sm:px-4 py-1.5 rounded-full transition-all cursor-pointer shadow-sm ml-1 sm:ml-2"
-            >
-              Salir
-            </button>
-          </div>
-        </header>
+              <button 
+                onClick={handleExportZIP}
+                className="flex items-center gap-1 sm:gap-2 text-[11px] sm:text-xs font-semibold text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 px-2 sm:px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-indigo-200"
+                title="Respaldar ZIP"
+              >
+                <Download size={14} /> <span className="hidden sm:inline">Respaldar</span>
+              </button>
+              <button 
+                onClick={exportToVectorPDF}
+                className="flex items-center gap-1 sm:gap-2 text-[11px] sm:text-xs font-semibold text-gray-600 hover:text-green-600 hover:bg-green-50 px-2 sm:px-3 py-1.5 rounded-full transition-all cursor-pointer border border-gray-200 hover:border-green-200"
+                title="Exportar PDF"
+              >
+                <Download size={14} /> <span className="hidden sm:inline">PDF</span>
+              </button>
+              <button 
+                onClick={handleCloseRequest}
+                className="text-[11px] sm:text-xs font-semibold text-red-500 hover:text-white bg-red-50 hover:bg-red-500 px-3 sm:px-4 py-1.5 rounded-full transition-all cursor-pointer shadow-sm ml-1 sm:ml-2"
+              >
+                Salir
+              </button>
+            </div>
+          </header>
+        )}
 
         <main className="flex-1 relative flex">
           <ReactFlowProvider>
             <div className="flex-1 relative">
               <GraphCanvas />
-              <Toolbar onToggleFilter={() => setIsFilterOpen(!isFilterOpen)} isFilterOpen={isFilterOpen} />
-              <FilterPanel isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} />
+              {touchUI ? (
+                <Dock mode={mode as 'phone' | 'tablet'} isFilterOpen={isFilterOpen} onToggleFilter={() => setIsFilterOpen(!isFilterOpen)} />
+              ) : (
+                <Toolbar onToggleFilter={() => setIsFilterOpen(!isFilterOpen)} isFilterOpen={isFilterOpen} />
+              )}
+              <FilterPanel isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} touch={touchUI} />
             </div>
           </ReactFlowProvider>
           
-          {selectedEntityId && (
-            <>
-              {/* Mobile Peek Bar (Always visible on mobile when an entity is selected, unless sidebar is open) */}
-              {!mobileSidebarOpen && (
-                <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] z-40 px-4 py-3 flex items-center justify-between animate-in slide-in-from-bottom-full duration-300">
-                  <div className="flex flex-col truncate pr-4">
-                    <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">
-                      {selectedEntityType === 'edge' ? 'Vínculo' : (nodes.find(n => n.id === selectedEntityId)?.type === 'cluster' ? 'Grupo' : 'Persona')}
-                    </span>
-                    <span className="font-bold text-gray-800 text-sm truncate">
-                      {selectedEntityType === 'edge' ? 'Editar Relación' : (
-                        (() => {
-                          const n = nodes.find(x => x.id === selectedEntityId);
-                          if (!n) return '';
-                          return n.type === 'cluster' ? (n.data.semanticLabel || 'Grupo') : (n.data.identity?.alias || n.data.identity?.givenName || 'Persona');
-                        })()
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button 
-                      onClick={() => setMobileSidebarOpen(true)} 
-                      className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-indigo-700"
-                    >
-                      Propiedades
-                    </button>
-                    <button onClick={() => useStore.getState().setSelectedEntity(null, null)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full">
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Mobile Backdrop for Full Sidebar */}
-              <div 
-                className={`fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 md:hidden transition-opacity duration-300 ${mobileSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                onClick={() => setMobileSidebarOpen(false)}
-              />
-              
-              {/* Sidebar Panel (Bottom sheet on mobile, right sidebar on desktop) */}
-              <div 
-                className={`fixed inset-x-0 bottom-0 h-[88vh] max-h-[92vh] w-full bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.2)] rounded-t-3xl flex flex-col z-50 md:relative md:inset-auto md:h-full md:w-80 md:max-w-none md:z-40 border-l border-gray-200 md:rounded-none transition-transform duration-300 ${mobileSidebarOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}`}
-              >
-                {/* Drag Handle for Mobile */}
-                <div 
-                  className="md:hidden flex items-center justify-center pt-4 pb-2 shrink-0 cursor-pointer"
-                  onClick={() => setMobileSidebarOpen(false)}
-                >
-                  <div className="w-12 h-1.5 bg-gray-300 hover:bg-gray-400 rounded-full transition-colors" />
-                </div>
-                <div className="flex-1 min-h-0">
-                  <Sidebar />
-                </div>
-              </div>
-            </>
+          {selectedEntityId && mode !== 'phone' && !connectFrom && (
+            <div className="relative h-full w-80 shrink-0 bg-white border-l border-gray-200 z-40">
+              <Sidebar />
+            </div>
+          )}
+          {mode === 'phone' && (
+            <PropertiesSheet>
+              <Sidebar />
+            </PropertiesSheet>
           )}
         </main>
       </div>

@@ -112,7 +112,7 @@ export default function Sidebar() {
   const calculatedAge = isIndividual ? calculateAge(birthDate) : null;
 
   return (
-    <div className="h-full w-full bg-white/95 backdrop-blur-xl flex flex-col transform transition-all duration-300">
+    <div className="sidebar-panel h-full w-full bg-white/95 backdrop-blur-xl flex flex-col transform transition-all duration-300">
       <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 bg-transparent shrink-0">
         <h2 className="font-bold text-gray-800 text-base sm:text-lg truncate pr-2">
           {isNode 

@@ -129,7 +129,7 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
       />
       
       {/* Visual crosshair hint on hover in the center */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center opacity-30 sm:opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 connect-hint transition-opacity z-20 pointer-events-none">
         <span className="text-[12px] font-bold">+</span>
       </div>
 

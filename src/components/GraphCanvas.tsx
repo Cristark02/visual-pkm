@@ -7,7 +7,9 @@ import ReactFlow, {
   applyEdgeChanges,
   ConnectionMode,
   MarkerType,
-  SelectionMode
+  SelectionMode,
+  useReactFlow,
+  useStoreApi
 } from 'reactflow';
 import type {
   Connection,
@@ -27,6 +29,9 @@ import ParallelEdge from './edges/ParallelEdge';
 import { getTaxonomyRelation, DEFAULT_TAXONOMY } from '../config/taxonomy';
 import { isPointInCluster } from '../lib/geometry';
 import { registerFlowInstance } from '../lib/placeNode';
+import { useUI } from '../store/useUI';
+import { useUIMode } from '../lib/useMedia';
+import { entityRect, revealRect } from '../lib/viewport';
 import ArrowAnnotationNode from './nodes/ArrowAnnotationNode';
 
 const nodeTypes = {
@@ -86,15 +91,91 @@ const isInside = (individual: RFNode, cluster: RFNode) =>
 export default function GraphCanvas() {
   const { nodes: storeNodes, edges: storeEdges, setSelectedEntity, addEdge: addStoreEdge, updateNodeData, activeFilterCategories } = useStore();
   
+  // --- Modo táctil ---
+  const mode = useUIMode();
+  const touchUI = mode !== 'desktop';
+  const multiSelect = useUI(s => s.multiSelect);
+  const connectFrom = useUI(s => s.connectFrom);
+  const sheet = useUI(s => s.sheet);
+  const flow = useReactFlow();
+  const rfStore = useStoreApi();
+
   const [nodes, setNodes] = useState<RFNode[]>([]);
   const [edges, setEdges] = useState<RFEdge[]>([]);
 
   const nodesRef = useRef<RFNode[]>([]);
+  const wrapRef = useRef<HTMLDivElement>(null);
   // true mientras el usuario arrastra el rectángulo de selección (caja drag)
   const boxSelecting = useRef(false);
   
   // Ref para capturar el estado inicial de un drag
   const dragContext = useRef<{ active: boolean, clusterIds: string[], memberIds: string[] }>({ active: false, clusterIds: [], memberIds: [] });
+
+  // Pellizco con dos dedos sobre un nodo (p. ej. un grupo grande): d3-drag del nodo se queda el
+  // touchstart y el zoom de reactflow nunca lo recibe. Lo gestionamos aquí.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || !touchUI) return;
+    let g: { d0: number; z0: number; x0: number; y0: number; cx: number; cy: number } | null = null;
+    const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      const onNode = [...e.touches].some(t => (t.target as Element | null)?.closest?.('.react-flow__node'));
+      if (!onNode) return;
+      const rect = el.getBoundingClientRect();
+      const v = flow.getViewport();
+      g = {
+        d0: dist(e.touches) || 1, z0: v.zoom, x0: v.x, y0: v.y,
+        cx: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
+        cy: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top,
+      };
+      e.stopPropagation();
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!g) return;
+      e.stopPropagation(); e.preventDefault();
+      if (e.touches.length !== 2) return;
+      const rect = el.getBoundingClientRect();
+      const z = Math.min(2, Math.max(0.1, g.z0 * (dist(e.touches) / g.d0)));
+      const k = z / g.z0;
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+      // el punto del lienzo bajo el centro inicial sigue bajo el centro actual
+      flow.setViewport({ x: mx - (g.cx - g.x0) * k, y: my - (g.cy - g.y0) * k, zoom: z });
+    };
+    const onEnd = (e: TouchEvent) => { if (g) { e.stopPropagation(); if (e.touches.length < 2) g = null; } };
+    el.addEventListener('touchstart', onStart, true);
+    el.addEventListener('touchmove', onMove, { capture: true, passive: false });
+    el.addEventListener('touchend', onEnd, true);
+    el.addEventListener('touchcancel', onEnd, true);
+    return () => {
+      el.removeEventListener('touchstart', onStart, true);
+      el.removeEventListener('touchmove', onMove, true);
+      el.removeEventListener('touchend', onEnd, true);
+      el.removeEventListener('touchcancel', onEnd, true);
+    };
+  }, [touchUI, flow]);
+
+  useEffect(() => {
+    rfStore.setState({ multiSelectionActive: multiSelect });
+  }, [multiSelect, rfStore]);
+
+  // Al entrar en selección múltiple se parte de cero
+  useEffect(() => {
+    if (multiSelect) useStore.getState().setSelectedEntity(null, null);
+  }, [multiSelect]);
+
+  // Revela la entidad seleccionada si queda fuera de la zona visible (tras barras/hojas inferiores)
+  const selectedEntityId = useStore(s => s.selectedEntityId);
+  useEffect(() => {
+    if (!touchUI || !selectedEntityId) return;
+    const t = setTimeout(() => {
+      const st = useStore.getState();
+      const r = entityRect(selectedEntityId, st.selectedEntityType ?? 'node', st.nodes, st.edges);
+      if (r) revealRect(flow, r);
+    }, 260);
+    return () => clearTimeout(t);
+  }, [touchUI, selectedEntityId, sheet, flow]);
 
   const allowedRelIds = useMemo(() => {
     if (activeFilterCategories === null) return null;
@@ -174,6 +255,9 @@ export default function GraphCanvas() {
         type: n.type,
         position: { x, y },
         selected: wasSelected,
+        className: connectFrom
+          ? (n.id === connectFrom ? 'connect-source' : (n.type === 'individual' ? 'connect-candidate' : ''))
+          : '',
         style: nodeStyle,
         data: {
           ...n.data,
@@ -186,7 +270,7 @@ export default function GraphCanvas() {
     
     setNodes(rfNodes);
     nodesRef.current = rfNodes;
-  }, [storeNodes, storeEdges, connectedNodeIds]);
+  }, [storeNodes, storeEdges, connectedNodeIds, connectFrom]);
 
   useEffect(() => {
     const edgeGroups = new Map<string, typeof storeEdges>();
@@ -431,16 +515,35 @@ export default function GraphCanvas() {
   }, [addStoreEdge]);
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: RFNode) => {
+    const ui = useUI.getState();
+    // Modo "Conectar": el siguiente toque sobre otra persona crea la unión
+    if (ui.connectFrom) {
+      if (node.type === 'individual' && node.id !== ui.connectFrom) {
+        addStoreEdge(ui.connectFrom, node.id);
+        ui.setConnectFrom(null);
+        if (window.matchMedia('(max-width: 767px)').matches) ui.setSheet('half');
+      }
+      return;
+    }
+    // En selección múltiple no se abre el panel de propiedades
+    if (ui.multiSelect) return;
     setSelectedEntity(node.id, 'node');
-  }, [setSelectedEntity]);
+  }, [setSelectedEntity, addStoreEdge]);
 
   const onEdgeClick = useCallback((_: React.MouseEvent, edge: RFEdge) => {
     setSelectedEntity(edge.id, 'edge');
   }, [setSelectedEntity]);
 
   const onPaneClick = useCallback(() => {
+    const ui = useUI.getState();
+    if (ui.connectFrom) { ui.setConnectFrom(null); return; }
+    ui.setAddSheetOpen(false);
     setSelectedEntity(null, null);
   }, [setSelectedEntity]);
+
+  const onSelectionChange = useCallback(({ nodes: sel }: { nodes: RFNode[] }) => {
+    useUI.getState().setSelectedIds(sel.map(n => n.id));
+  }, []);
 
   const onNodeDragStop = useCallback((_: React.MouseEvent, node: RFNode) => {
     const currentNodes = nodesRef.current;
@@ -482,7 +585,7 @@ export default function GraphCanvas() {
   }, [updateNodeData]);
 
   return (
-    <div className="w-full h-full bg-[#f8fafc]">
+    <div ref={wrapRef} className="w-full h-full bg-[#f8fafc]">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -504,8 +607,14 @@ export default function GraphCanvas() {
         multiSelectionKeyCode={['Control', 'Meta']}
         connectionMode={ConnectionMode.Loose}
         selectionMode={SelectionMode.Partial}
-        panOnDrag={[1, 2]}
-        selectionOnDrag
+        // Ratón: arrastre izquierdo = caja de selección. Táctil: un dedo = mover el lienzo;
+        // la caja solo se dibuja en "Selección múltiple". Dos dedos siempre hacen zoom/pan.
+        panOnDrag={touchUI && !multiSelect ? true : [1, 2]}
+        selectionOnDrag={!touchUI || multiSelect}
+        zoomOnDoubleClick={!touchUI}
+        nodeDragThreshold={touchUI ? 8 : 1}
+        connectionRadius={touchUI ? 48 : 20}
+        onSelectionChange={touchUI ? onSelectionChange : undefined}
         fitView
         className="touch-manipulation"
         proOptions={{ hideAttribution: true }}
