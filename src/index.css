@@ -78,3 +78,8 @@ html, body { overscroll-behavior: none; }
 
 /* La mini-mapa estorba en pantallas táctiles */
 .touch-ui .react-flow__minimap { display: none; }
+
+/* Móvil: la altura debe ser la visible (barra de URL del navegador), no 100vh */
+.touch-ui, .touch-ui body, .touch-ui #root { height: 100dvh; }
+/* El zoom se hace con pellizco y el botón "Vista"; los controles estorbaban a la barra inferior */
+.touch-ui .react-flow__controls { display: none; }

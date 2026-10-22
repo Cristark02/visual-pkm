@@ -291,7 +291,7 @@ function App() {
 
   return (
     <>
-      <div className="h-screen w-screen flex flex-col bg-[#F8F9FA] overflow-hidden font-sans">
+      <div className="h-dvh w-screen flex flex-col bg-[#F8F9FA] overflow-hidden font-sans">
         {touchUI ? (
           <header className="bg-white/90 backdrop-blur-md border-b border-gray-200/50 px-3 flex items-center justify-between shadow-sm z-30 shrink-0 gap-2 relative" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))', paddingBottom: 8 }}>
             <div className="flex items-center gap-2.5 min-w-0">
