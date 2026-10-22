@@ -62,7 +62,7 @@ html, body { overscroll-behavior: none; }
 .touch-ui .react-flow__controls { box-shadow: 0 4px 14px rgba(0,0,0,0.12); border-radius: 14px; overflow: hidden; }
 .touch-ui .react-flow__controls-button { width: 44px !important; height: 44px !important; }
 .touch-ui .react-flow__controls { margin-bottom: 150px; }
-.touch-ui .react-flow__resize-control.handle { width: 28px !important; height: 28px !important; }
+.touch-ui .react-flow__resize-control.handle { width: calc(34px / var(--rf-zoom, 1)) !important; height: calc(34px / var(--rf-zoom, 1)) !important; border-width: calc(3px / var(--rf-zoom, 1)) !important; }
 .touch-ui .react-flow__node .nodrag button,
 .touch-ui .react-flow__node button { min-width: 40px; min-height: 40px; }
 .touch-ui .arrow-handle { r: 15px; }
@@ -83,3 +83,13 @@ html, body { overscroll-behavior: none; }
 .touch-ui, .touch-ui body, .touch-ui #root { height: 100dvh; }
 /* El zoom se hace con pellizco y el botón "Vista"; los controles estorbaban a la barra inferior */
 .touch-ui .react-flow__controls { display: none; }
+
+/* Los tiradores de redimensionar siempre por encima del contenido del nodo */
+.react-flow__resize-control.handle { z-index: 60; }
+
+/* Táctil: los tiradores sobresalen hacia fuera de la esquina, así un dedo los alcanza aunque
+   haya personas dentro del grupo cerca de la esquina */
+.touch-ui .react-flow__resize-control.handle.left { margin-left: calc(-14px / var(--rf-zoom, 1)); }
+.touch-ui .react-flow__resize-control.handle.right { margin-left: calc(14px / var(--rf-zoom, 1)); }
+.touch-ui .react-flow__resize-control.handle.top { margin-top: calc(-14px / var(--rf-zoom, 1)); }
+.touch-ui .react-flow__resize-control.handle.bottom { margin-top: calc(14px / var(--rf-zoom, 1)); }

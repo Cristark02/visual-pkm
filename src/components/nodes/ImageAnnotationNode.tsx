@@ -105,8 +105,9 @@ const ImageAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         minHeight={60}
         isVisible={selected && !cropMode}
         keepAspectRatio={keepAspect}
-        lineClassName="border-indigo-400"
-        handleClassName="h-3 w-3 bg-white border-2 border-indigo-600 rounded-sm"
+        lineStyle={{ borderColor: 'transparent' }}
+        handleStyle={{ width: 16, height: 16, background: '#ffffff', border: '3px solid #4f46e5', borderRadius: '50%', boxShadow: '0 1px 4px rgba(0,0,0,0.35)', pointerEvents: 'auto' }}
+        handleClassName="pointer-events-auto"
         onResizeEnd={(_, params) => {
           updateNodeData(id, { 
             visualDimensions: { width: Math.round(params.width), height: Math.round(params.height) },

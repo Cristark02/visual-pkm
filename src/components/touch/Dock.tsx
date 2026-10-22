@@ -244,9 +244,9 @@ const Dock = ({ mode, isFilterOpen, onToggleFilter }: DockProps) => {
             <BoxSelect size={20} />
             Varios
           </button>
-          <button type="button" onClick={() => flow.fitView({ duration: 350, padding: 0.2 })} className={dockItem(false)} aria-label="Ajustar vista">
+          <button type="button" onClick={() => flow.fitView({ duration: 350, padding: 0.2, maxZoom: 1.5 })} className={dockItem(false)} aria-label="Ajustar vista">
             <Maximize size={20} />
-            Vista
+            Centrar
           </button>
         </div>
       </div>

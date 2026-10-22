@@ -29,6 +29,9 @@ import ParallelEdge from './edges/ParallelEdge';
 import { getTaxonomyRelation, DEFAULT_TAXONOMY } from '../config/taxonomy';
 import { isPointInCluster } from '../lib/geometry';
 import { registerFlowInstance } from '../lib/placeNode';
+// Zoom muy amplio: se puede alejar mucho y acercar mucho; el botón «Centrar» devuelve la vista
+const MIN_ZOOM = 0.02;
+const MAX_ZOOM = 12;
 import { useUI } from '../store/useUI';
 import { useUIMode } from '../lib/useMedia';
 import { entityRect, revealRect } from '../lib/viewport';
@@ -136,7 +139,7 @@ export default function GraphCanvas() {
       e.stopPropagation(); e.preventDefault();
       if (e.touches.length !== 2) return;
       const rect = el.getBoundingClientRect();
-      const z = Math.min(2, Math.max(0.1, g.z0 * (dist(e.touches) / g.d0)));
+      const z = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, g.z0 * (dist(e.touches) / g.d0)));
       const k = z / g.z0;
       const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
       const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
@@ -155,6 +158,15 @@ export default function GraphCanvas() {
       el.removeEventListener('touchcancel', onEnd, true);
     };
   }, [touchUI, flow]);
+
+  // Tamaño de los tiradores independiente del zoom (--rf-zoom): con zoom bajo seguían siendo diminutos
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const apply = () => el.style.setProperty('--rf-zoom', String(Math.max(rfStore.getState().transform[2], 0.05)));
+    apply();
+    return rfStore.subscribe(apply);
+  }, [rfStore]);
 
   useEffect(() => {
     rfStore.setState({ multiSelectionActive: multiSelect });
@@ -616,6 +628,8 @@ export default function GraphCanvas() {
         connectionRadius={touchUI ? 48 : 20}
         onSelectionChange={touchUI ? onSelectionChange : undefined}
         fitView
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
         className="touch-manipulation"
         proOptions={{ hideAttribution: true }}
       >
