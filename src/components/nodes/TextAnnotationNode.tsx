@@ -5,12 +5,9 @@ import '@reactflow/node-resizer/dist/style.css';
 import { AlignLeft, AlignCenter, AlignRight, Trash2, PaintBucket, Square, RectangleHorizontal } from 'lucide-react';
 import type { NodeData } from '../../types/store';
 import { useStore } from '../../store/useStore';
-
-const FONTS = [
-  { id: 'sans', name: 'Sans', fontClass: 'font-sans', sample: 'font-sans' },
-  { id: 'serif', name: 'Serif', fontClass: 'font-serif italic', sample: 'font-serif italic' },
-  { id: 'mono', name: 'Mono', fontClass: 'font-mono', sample: 'font-mono' },
-];
+import { useUI } from '../../store/useUI';
+import { useUIMode } from '../../lib/useMedia';
+import { TEXT_FONTS, textFont, effectShadow } from '../../lib/textFonts';
 
 const ALIGNS = [
   { id: 'left', icon: AlignLeft, title: 'Alinear a la izquierda' },
@@ -29,6 +26,9 @@ const TextAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   const [hovered, setHovered] = useState(false);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const touchUI = useUIMode() !== 'desktop';
+  // En táctil el editor a pantalla completa (Studio) manda: mientras está abierto se escribe en el propio texto
+  const studioOpen = useUI(st => st.studioId === id);
 
   const styleConfig = data.styleConfig || {};
   const text = data.description ?? '';
@@ -38,15 +38,22 @@ const TextAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   const bgColor = styleConfig.bgColor || '#ffffff';
   const textAlign = styleConfig.textAlign || 'center';
   const fontSize = styleConfig.fontSize || 20;
+  const textEffect = styleConfig.textEffect;
   const showBackground = styleConfig.showBackground !== false && highlightStyle !== 'transparent';
   const roundShape = highlightStyle !== 'solid';
 
+  const editing = isEditing || studioOpen;
+
   useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.select();
-    }
-  }, [isEditing]);
+    if (!editing || !textareaRef.current) return;
+    textareaRef.current.focus();
+    textareaRef.current.select();
+    // El toque que abrió el editor puede mover el foco justo después: se reintenta una vez
+    const t = setTimeout(() => {
+      if (document.activeElement !== textareaRef.current) textareaRef.current?.focus();
+    }, 250);
+    return () => clearTimeout(t);
+  }, [editing]);
 
   useEffect(() => () => { if (leaveTimer.current) clearTimeout(leaveTimer.current); }, []);
 
@@ -62,22 +69,23 @@ const TextAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
     leaveTimer.current = setTimeout(() => setHovered(false), HOVER_GRACE_MS);
   };
 
-  const activeFont = FONTS.find(f => f.id === fontFamily) || FONTS[0];
-  const showToolbar = selected || hovered || isEditing;
-  const isEmpty = text.trim() === '' && !isEditing;
+  const activeFont = textFont(fontFamily);
+  const showToolbar = !touchUI && (selected || hovered || isEditing);
+  const isEmpty = text.trim() === '' && !editing;
 
   const containerStyle: React.CSSProperties = showBackground
     ? {
         backgroundColor: bgColor,
         color: textColor,
         boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+        textShadow: effectShadow(textEffect, true),
         borderRadius: roundShape ? '20px' : '8px',
         padding: roundShape ? '10px 18px' : '12px 16px',
       }
     : {
         backgroundColor: 'transparent',
         color: textColor,
-        textShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        textShadow: effectShadow(textEffect, false),
         padding: '8px',
         // Texto vacío sin fondo: solo un contorno tenue mientras se interactúa, para poder encontrarlo
         outline: isEmpty && (selected || hovered) ? '2px dashed rgba(99,102,241,0.5)' : undefined,
@@ -90,16 +98,17 @@ const TextAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   return (
     <div 
       className="relative group min-w-[120px] select-none"
-      onDoubleClick={() => setIsEditing(true)}
+      onDoubleClick={() => { if (!touchUI) setIsEditing(true); }}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
     >
       <NodeResizer 
         minWidth={80} 
         minHeight={40}
-        isVisible={selected}
-        lineClassName="border-indigo-400"
-        handleClassName="h-2.5 w-2.5 bg-white border-2 border-indigo-600 rounded-sm"
+        isVisible={selected && !studioOpen}
+        lineStyle={{ borderColor: 'transparent' }}
+        handleStyle={{ width: 16, height: 16, background: '#ffffff', border: '3px solid #4f46e5', borderRadius: '50%', boxShadow: '0 1px 4px rgba(0,0,0,0.35)', pointerEvents: 'auto' }}
+        handleClassName="pointer-events-auto"
         onResizeEnd={(_, params) => {
           updateNodeData(id, { 
             visualDimensions: { width: Math.round(params.width), height: Math.round(params.height) },
@@ -115,12 +124,12 @@ const TextAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
           <div className="bg-gray-900/90 backdrop-blur-md px-2 py-1.5 rounded-2xl shadow-xl flex flex-wrap items-center justify-center gap-1.5 text-white max-w-[340px] animate-in fade-in duration-150">
             {/* Tipografía */}
             <div className="flex items-center gap-0.5">
-              {FONTS.map(f => (
+              {TEXT_FONTS.slice(0, 3).map(f => (
                 <button
                   key={f.id}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); patch({ fontFamily: f.id }); }}
-                  className={`${btn(fontFamily === f.id)} text-xs font-bold px-1.5 ${f.sample}`}
+                  className={`${btn(fontFamily === f.id)} text-xs font-bold px-1.5 ${f.className}`}
                   title={`Tipografía: ${f.name}`}
                 >
                   Aa
@@ -228,28 +237,29 @@ const TextAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
       {/* Texto o editor */}
       <div 
         style={containerStyle}
-        className={`transition-all duration-200 min-h-[2.5rem] ${activeFont.fontClass}`}
+        className={`transition-all duration-200 min-h-[2.5rem] ${activeFont.className}`}
       >
-        {isEditing ? (
+        {editing ? (
           <textarea
             ref={textareaRef}
             value={data.description || ''}
             onChange={(e) => updateNodeData(id, { description: e.target.value })}
-            onBlur={() => setIsEditing(false)}
+            onBlur={() => { if (!studioOpen) setIsEditing(false); }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && !e.shiftKey && !studioOpen) {
                 e.preventDefault();
                 setIsEditing(false);
               }
             }}
             className="w-full bg-transparent outline-none resize-none overflow-hidden nodrag nopan"
-            style={{ fontSize: `${fontSize}px`, textAlign, color: textColor }}
+            style={{ fontSize: `${fontSize}px`, textAlign, color: textColor, ...activeFont.style }}
             rows={2}
+            placeholder="Escribe aquí…"
           />
         ) : (
           <div 
             className="whitespace-pre-wrap select-none leading-relaxed font-bold break-words"
-            style={{ fontSize: `${fontSize}px`, textAlign, minHeight: '1.5em' }}
+            style={{ fontSize: `${fontSize}px`, textAlign, minHeight: '1.5em', ...activeFont.style }}
           >
             {text}
           </div>

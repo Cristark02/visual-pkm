@@ -61,6 +61,8 @@ export interface NodeData {
     /** Si es false el texto no dibuja fondo (equivale a 'transparent'). */
     showBackground?: boolean;
     textAlign?: 'left' | 'center' | 'right';
+    /** Efecto del texto (sin fondo o con él). Sin definir = comportamiento clásico. */
+    textEffect?: 'none' | 'shadow' | 'outline' | 'glow';
   };
 }
 

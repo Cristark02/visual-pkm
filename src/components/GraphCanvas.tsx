@@ -99,6 +99,7 @@ export default function GraphCanvas() {
   const touchUI = mode !== 'desktop';
   const multiSelect = useUI(s => s.multiSelect);
   const connectFrom = useUI(s => s.connectFrom);
+  const studioId = useUI(s => s.studioId);
   const sheet = useUI(s => s.sheet);
   const flow = useReactFlow();
   const rfStore = useStoreApi();
@@ -267,9 +268,12 @@ export default function GraphCanvas() {
         type: n.type,
         position: { x, y },
         selected: wasSelected,
-        className: connectFrom
-          ? (n.id === connectFrom ? 'connect-source' : (n.type === 'individual' ? 'connect-candidate' : ''))
-          : '',
+        className: [
+          connectFrom
+            ? (n.id === connectFrom ? 'connect-source' : (n.type === 'individual' ? 'connect-candidate' : ''))
+            : '',
+          n.id === studioId ? 'studio-target' : '',
+        ].filter(Boolean).join(' '),
         style: nodeStyle,
         data: {
           ...n.data,
@@ -282,7 +286,7 @@ export default function GraphCanvas() {
     
     setNodes(rfNodes);
     nodesRef.current = rfNodes;
-  }, [storeNodes, storeEdges, connectedNodeIds, connectFrom]);
+  }, [storeNodes, storeEdges, connectedNodeIds, connectFrom, studioId]);
 
   useEffect(() => {
     const edgeGroups = new Map<string, typeof storeEdges>();
@@ -539,6 +543,11 @@ export default function GraphCanvas() {
     }
     // En selección múltiple no se abre el panel de propiedades
     if (ui.multiSelect) return;
+    // Táctil: tocar un texto, foto o flecha abre su editor a pantalla completa
+    if (window.matchMedia('(pointer: coarse), (max-width: 767px)').matches &&
+        (node.type === 'textAnnotation' || node.type === 'imageAnnotation' || node.type === 'arrowAnnotation')) {
+      ui.openStudio(node.id);
+    }
     setSelectedEntity(node.id, 'node');
   }, [setSelectedEntity, addStoreEdge]);
 

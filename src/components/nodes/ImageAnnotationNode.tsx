@@ -5,6 +5,7 @@ import '@reactflow/node-resizer/dist/style.css';
 import { Image, Upload, Trash2, Crop, Check, Shapes } from 'lucide-react';
 import type { NodeData, ImageShape, ImageStyle } from '../../types/store';
 import { useStore } from '../../store/useStore';
+import { useUIMode } from '../../lib/useMedia';
 import { STAR_CLIP, HEART_PATH } from '../../lib/imageShapes';
 
 /** Orden del ciclo al hacer clic sobre una imagen ya seleccionada. */
@@ -48,6 +49,7 @@ const ImageAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   const clipId = `heart-clip-${id}`;
   const keepAspect = shape === 'circle' || shape === 'star' || shape === 'heart';
 
+  const touchUI = useUIMode() !== 'desktop';
   const patchStyle = (patch: Partial<ImageStyle>, history = true) =>
     updateNodeData(id, { imageStyle: { ...style, ...patch } }, { history });
 
@@ -136,7 +138,7 @@ const ImageAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
       {imageUrl ? (
         <>
           {/* Barra de edición */}
-          {selected && (
+          {selected && !touchUI && (
             <div className="absolute -top-11 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-900/90 backdrop-blur-sm px-1.5 py-1 rounded-xl nodrag nopan z-50 text-white whitespace-nowrap">
               <button
                 type="button"

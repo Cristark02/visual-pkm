@@ -4,6 +4,7 @@ import { useReactFlow } from 'reactflow';
 import { Trash2, Minus, ArrowRight, ArrowLeftRight } from 'lucide-react';
 import type { NodeData, ArrowStyle } from '../../types/store';
 import { useStore } from '../../store/useStore';
+import { useUIMode } from '../../lib/useMedia';
 
 /** Altura fija del contenedor del nodo; el dibujo vive centrado en ella. */
 const ARROW_BOX_H = 24;
@@ -40,6 +41,7 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
   const endInset = head !== 'none' ? hs * 0.8 : 0;
   const cy = ARROW_BOX_H / 2;
 
+  const touchUI = useUIMode() !== 'desktop';
   const patchStyle = (patch: Partial<ArrowStyle>, history = true) => {
     const next = { ...st, ...patch };
     useStore.getState().updateNodeData(id, {
@@ -102,7 +104,7 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
       style={{ width: length, height: ARROW_BOX_H }}
     >
       {/* Barra flotante (no rota con la flecha) */}
-      {selected && (
+      {selected && !touchUI && (
         <div className="absolute left-0 bottom-full mb-8 bg-gray-900/90 backdrop-blur-md px-2 py-1.5 rounded-2xl shadow-xl flex items-center gap-2 z-50 text-white nodrag nopan pointer-events-auto whitespace-nowrap">
           <input
             type="color"

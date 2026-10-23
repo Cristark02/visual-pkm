@@ -3,6 +3,7 @@ import { useUI } from './store/useUI';
 import { useUIMode } from './lib/useMedia';
 import Dock from './components/touch/Dock';
 import PropertiesSheet from './components/touch/PropertiesSheet';
+import Studio from './components/touch/Studio';
 import { useStore } from './store/useStore';
 import { openDocument, currentFileHandle, parseDocument } from './lib/fsManager';
 import { FileJson, AlertCircle, Download, Plus, Info, ExternalLink, UploadCloud, UserPlus, FolderPlus, Undo2, Redo2, MoreVertical, LogOut } from 'lucide-react';
@@ -394,6 +395,7 @@ function App() {
           <ReactFlowProvider>
             <div className="flex-1 relative">
               <GraphCanvas />
+              {touchUI && <Studio />}
               {touchUI ? (
                 <Dock mode={mode as 'phone' | 'tablet'} isFilterOpen={isFilterOpen} onToggleFilter={() => setIsFilterOpen(!isFilterOpen)} />
               ) : (

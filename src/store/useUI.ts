@@ -32,6 +32,11 @@ interface UIState {
   addSheetOpen: boolean;
   setAddSheetOpen: (v: boolean) => void;
 
+  /** Editor táctil a pantalla completa (texto / foto / flecha): id del nodo que se edita. */
+  studioId: string | null;
+  openStudio: (id: string) => void;
+  closeStudio: () => void;
+
   menuOpen: boolean;
   setMenuOpen: (v: boolean) => void;
 
@@ -54,6 +59,10 @@ export const useUI = create<UIState>((set) => ({
 
   sheet: 'closed',
   setSheet: (s) => set({ sheet: s }),
+
+  studioId: null,
+  openStudio: (id) => set({ studioId: id, addSheetOpen: false, connectFrom: null, sheet: 'closed' }),
+  closeStudio: () => set({ studioId: null }),
 
   addSheetOpen: false,
   setAddSheetOpen: (v) => set({ addSheetOpen: v }),

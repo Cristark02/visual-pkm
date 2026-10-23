@@ -171,7 +171,7 @@ const Dock = ({ mode, isFilterOpen, onToggleFilter }: DockProps) => {
 
       <div
         data-bottom-ui
-        className="absolute left-0 right-0 bottom-0 z-50 flex flex-col items-stretch gap-2 px-2 pointer-events-none"
+        className="dock-root absolute left-0 right-0 bottom-0 z-50 flex flex-col items-stretch gap-2 px-2 pointer-events-none"
         style={{ paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}
       >
         {/* Aviso con Deshacer */}
@@ -201,7 +201,11 @@ const Dock = ({ mode, isFilterOpen, onToggleFilter }: DockProps) => {
                   <button
                     key={t.type}
                     type="button"
-                    onClick={() => { placeNode(t.type); setAddSheetOpen(false); setMultiSelect(false); }}
+                    onClick={() => {
+                      const newId = placeNode(t.type);
+                      setAddSheetOpen(false); setMultiSelect(false);
+                      if (newId && (t.type === 'textAnnotation' || t.type === 'imageAnnotation' || t.type === 'arrowAnnotation')) useUI.getState().openStudio(newId);
+                    }}
                     className="flex flex-col items-center gap-1.5 py-2 rounded-2xl active:scale-95 transition-transform select-none"
                   >
                     <span className={`w-14 h-14 rounded-2xl flex items-center justify-center ${t.color}`}><Icon size={26} /></span>

@@ -29,14 +29,14 @@ export function getViewportCenter(): { x: number; y: number } {
  * Crea un nodo donde mira el usuario. Si el centro está ocupado por nodos, aristas
  * o grupos, busca un hueco libre, crea ahí el nodo y desplaza la vista con animación.
  */
-export function placeNode(type: NodeType) {
+export function placeNode(type: NodeType): string | undefined {
   const center = getViewportCenter();
   const { nodes, edges, addNode } = useStore.getState();
 
   if (type === 'cluster') {
     // Los grupos son grandes y pueden solaparse a propósito: se colocan en el centro.
     addNode(type, { x: Math.round(center.x), y: Math.round(center.y) });
-    return;
+    return useStore.getState().nodes.at(-1)?.id;
   }
 
   const size = type === 'individual' ? 80 : type === 'arrowAnnotation' ? 60 : 200;
@@ -46,4 +46,5 @@ export function placeNode(type: NodeType) {
   if (spot.moved && flow) {
     flow.setCenter(spot.x, spot.y, { zoom: flow.getZoom(), duration: 600 });
   }
+  return useStore.getState().nodes.at(-1)?.id;
 }

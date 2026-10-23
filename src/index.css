@@ -93,3 +93,14 @@ html, body { overscroll-behavior: none; }
 .touch-ui .react-flow__resize-control.handle.right { margin-left: calc(14px / var(--rf-zoom, 1)); }
 .touch-ui .react-flow__resize-control.handle.top { margin-top: calc(-14px / var(--rf-zoom, 1)); }
 .touch-ui .react-flow__resize-control.handle.bottom { margin-top: calc(14px / var(--rf-zoom, 1)); }
+
+/* Editor táctil (Studio): se oscurece solo el fondo; el elemento editado queda a la vista */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.studio-open .dock-root { display: none; }
+.studio-open .react-flow__node:not(.studio-target),
+.studio-open .react-flow__edge,
+.studio-open .react-flow__edgelabel-renderer,
+.studio-open .react-flow__background { opacity: 0.18 !important; transition: opacity 0.2s ease; pointer-events: none !important; }
+.studio-open .react-flow { background: #0b1020; }
+.studio-open .react-flow__minimap, .studio-open .react-flow__controls { display: none; }
