@@ -268,13 +268,20 @@ const Studio = () => {
               ))}
             </Row>
             {imageUrl && (
-              <div className="flex items-center gap-3 px-1 min-h-[44px]">
-                <span className="text-xs font-bold text-gray-300 w-14">Encuadre</span>
+              <div className="flex flex-col gap-0 px-1">
+                <span className="text-[11px] text-gray-400">Arrastra la foto para elegir el encuadre</span>
+              <div className="flex items-center gap-3 min-h-[44px]">
+                <span className="text-xs font-bold text-gray-300 w-14">Zoom</span>
                 <input
-                  type="range" min={1} max={3} step={0.05} value={ist.zoom ?? 1}
-                  onChange={e => patchData({ imageStyle: { ...ist, zoom: Number(e.target.value) } })}
-                  className="flex-1" style={{ accentColor: '#ffffff', height: 36 }} aria-label="Encuadre"
+                  type="range" min={1} max={4} step={0.05} value={ist.zoom ?? 1}
+                  onChange={e => {
+                    const z = Number(e.target.value);
+                    const m = ((z - 1) * 100) / 2;
+                    patchData({ imageStyle: { ...ist, zoom: z, offsetX: Math.max(-m, Math.min(m, ist.offsetX ?? 0)), offsetY: Math.max(-m, Math.min(m, ist.offsetY ?? 0)) } });
+                  }}
+                  className="flex-1" style={{ accentColor: '#ffffff', height: 36 }} aria-label="Zoom de la foto"
                 />
+              </div>
               </div>
             )}
           </>

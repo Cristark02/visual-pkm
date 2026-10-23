@@ -253,9 +253,12 @@ export default function GraphCanvas() {
       const h = n.data.visualDimensions?.height || (isCluster ? 800 : 80);
 
       const isFilteredOut = connectedNodeIds !== null && !connectedNodeIds.has(n.id) && n.type === 'individual';
+      // El texto se ajusta a su contenido (sin ancho/alto fijos); el resto de nodos usan su tamaño guardado
       const nodeStyle = isCluster 
         ? { width: w, height: h, zIndex: -1 } 
-        : { width: w, height: h, zIndex: 1, opacity: isFilteredOut ? 0.25 : 1, transition: 'opacity 0.25s ease' };
+        : n.type === 'textAnnotation'
+          ? { zIndex: 1, opacity: isFilteredOut ? 0.25 : 1, transition: 'opacity 0.25s ease' }
+          : { width: w, height: h, zIndex: 1, opacity: isFilteredOut ? 0.25 : 1, transition: 'opacity 0.25s ease' };
 
       // Conserva la selección existente; un nodo recién creado nace seleccionado si el store lo apunta
       const existingRf = nodesRef.current.find(cn => cn.id === n.id);
@@ -268,6 +271,11 @@ export default function GraphCanvas() {
         type: n.type,
         position: { x, y },
         selected: wasSelected,
+        // Los textos no tienen tamaño fijo: se conserva el medido, o React Flow los oculta un instante
+        // al reconstruir los nodos (y el teclado se cerraría al escribir)
+        ...(n.type === 'textAnnotation' && existingRf?.width && existingRf?.height
+          ? { width: existingRf.width, height: existingRf.height }
+          : {}),
         className: [
           connectFrom
             ? (n.id === connectFrom ? 'connect-source' : (n.type === 'individual' ? 'connect-candidate' : ''))
@@ -637,6 +645,7 @@ export default function GraphCanvas() {
         connectionRadius={touchUI ? 48 : 20}
         onSelectionChange={touchUI ? onSelectionChange : undefined}
         fitView
+        fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
         className="touch-manipulation"

@@ -1,13 +1,12 @@
 import { memo, useState, useRef, useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
 import type { NodeProps } from 'reactflow';
-import { NodeResizer } from '@reactflow/node-resizer';
-import '@reactflow/node-resizer/dist/style.css';
+import ResizeHandles from './ResizeHandles';
 import { Link2, Unlink } from 'lucide-react';
 import type { NodeData } from '../../types/store';
 import { useStore } from '../../store/useStore';
 
-const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
+const ClusterNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeData>) => {
   const [isHovered, setIsHovered] = useState(false);
   const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -65,20 +64,7 @@ const ClusterNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         {data.isChainLinked ? <Link2 size={24} /> : <Unlink size={24} />}
       </button>
 
-      <NodeResizer 
-        minWidth={150} 
-        minHeight={150}
-        isVisible={selected || isHovered}
-        lineStyle={{ borderColor: 'transparent' }}
-        handleStyle={{ width: 16, height: 16, background: '#ffffff', border: '3px solid #4f46e5', borderRadius: '50%', boxShadow: '0 1px 4px rgba(0,0,0,0.35)', pointerEvents: 'auto' }}
-        handleClassName="pointer-events-auto"
-        onResizeEnd={(_, params) => {
-          updateNodeData(id, { 
-            visualDimensions: { width: Math.round(params.width), height: Math.round(params.height) },
-            visualPosition: { x: Math.round(params.x), y: Math.round(params.y) }
-          });
-        }}
-      />
+      <ResizeHandles id={id} xPos={xPos} yPos={yPos} mode="free" visible={selected || isHovered} minW={150} minH={150} />
       
       <div className="w-full h-full relative z-0 pointer-events-none">
         <svg 

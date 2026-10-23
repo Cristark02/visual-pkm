@@ -405,7 +405,7 @@ function App() {
             </div>
           </ReactFlowProvider>
           
-          {selectedEntityId && mode !== 'phone' && !connectFrom && (
+          {selectedEntityId && mode !== 'phone' && !connectFrom && !(touchUI && ['textAnnotation', 'imageAnnotation', 'arrowAnnotation'].includes(nodes.find(n => n.id === selectedEntityId)?.type ?? '')) && (
             <div className="relative h-full w-80 shrink-0 bg-white border-l border-gray-200 z-40">
               <Sidebar />
             </div>

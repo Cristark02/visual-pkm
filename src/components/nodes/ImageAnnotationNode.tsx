@@ -1,7 +1,7 @@
 import { memo, useRef, useState } from 'react';
 import type { NodeProps } from 'reactflow';
-import { NodeResizer } from '@reactflow/node-resizer';
-import '@reactflow/node-resizer/dist/style.css';
+import ResizeHandles from './ResizeHandles';
+import { useUI } from '../../store/useUI';
 import { Image, Upload, Trash2, Crop, Check, Shapes } from 'lucide-react';
 import type { NodeData, ImageShape, ImageStyle } from '../../types/store';
 import { useStore } from '../../store/useStore';
@@ -31,10 +31,13 @@ const shapeBoxStyle = (shape: ImageShape, clipId: string): React.CSSProperties =
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
-const ImageAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
+const ImageAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeData>) => {
   const { updateNodeData, removeNode } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cropMode, setCropMode] = useState(false);
+  // Con el editor táctil abierto, arrastrar la foto la encuadra directamente
+  const studioOpen = useUI(st => st.studioId === id);
+  const crop = cropMode || studioOpen;
   const panRef = useRef<null | { x: number; y: number; ox: number; oy: number }>(null);
 
   const imageUrl = data.mediaReferences?.primaryAvatarPath;
@@ -76,7 +79,7 @@ const ImageAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   const maxOffset = (z: number) => ((z - 1) * 100) / 2;
 
   const onPanDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!cropMode) return;
+    if (!crop) return;
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
     panRef.current = { x: e.clientX, y: e.clientY, ox: offsetX, oy: offsetY };
@@ -84,7 +87,7 @@ const ImageAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
   };
   const onPanMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const p = panRef.current;
-    if (!p || !cropMode) return;
+    if (!p || !crop) return;
     const m = maxOffset(zoom);
     const nx = clamp(p.ox + ((e.clientX - p.x) / w) * 100, -m, m);
     const ny = clamp(p.oy + ((e.clientY - p.y) / h) * 100, -m, m);
@@ -102,21 +105,7 @@ const ImageAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
 
   return (
     <div className="relative group select-none">
-      <NodeResizer 
-        minWidth={60} 
-        minHeight={60}
-        isVisible={selected && !cropMode}
-        keepAspectRatio={keepAspect}
-        lineStyle={{ borderColor: 'transparent' }}
-        handleStyle={{ width: 16, height: 16, background: '#ffffff', border: '3px solid #4f46e5', borderRadius: '50%', boxShadow: '0 1px 4px rgba(0,0,0,0.35)', pointerEvents: 'auto' }}
-        handleClassName="pointer-events-auto"
-        onResizeEnd={(_, params) => {
-          updateNodeData(id, { 
-            visualDimensions: { width: Math.round(params.width), height: Math.round(params.height) },
-            visualPosition: { x: Math.round(params.x), y: Math.round(params.y) }
-          });
-        }}
-      />
+      <ResizeHandles id={id} xPos={xPos} yPos={yPos} mode={keepAspect ? 'uniform' : 'free'} visible={selected && !crop} minW={60} minH={60} />
 
       <input 
         type="file" 
@@ -187,9 +176,9 @@ const ImageAnnotationNode = ({ id, data, selected }: NodeProps<NodeData>) => {
           {/* La sombra va en el contenedor: el clip-path del hijo recortaría un box-shadow */}
           <div style={{ width: `${w}px`, height: `${h}px`, filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.25))' }}>
             <div
-              className={`relative w-full h-full overflow-hidden bg-white ${cropMode ? 'nodrag nopan touch-none' : ''}`}
+              className={`relative w-full h-full overflow-hidden bg-white ${crop ? 'nodrag nopan touch-none' : ''}`}
               style={shapeBoxStyle(shape, clipId)}
-              onClick={() => { if (selected && !cropMode) cycleShape(); }}
+              onClick={() => { if (selected && !crop && !touchUI) cycleShape(); }}
               onPointerDown={onPanDown}
               onPointerMove={onPanMove}
               onPointerUp={onPanUp}
