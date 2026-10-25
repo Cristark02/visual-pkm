@@ -28,6 +28,7 @@ const EFFECTS = [
   { id: 'none', label: 'Ninguno' }, { id: 'shadow', label: 'Sombra' }, { id: 'outline', label: 'Contorno' }, { id: 'glow', label: 'Brillo' },
 ] as const;
 const DASHES = [{ id: 'solid', label: 'Continua' }, { id: 'dashed', label: 'Rayas' }, { id: 'dotted', label: 'Puntos' }] as const;
+const HEAD_SHAPES = [{ id: 'triangle', label: '▶' }, { id: 'round', label: '●' }, { id: 'diamond', label: '◆' }, { id: 'open', label: '>' }] as const;
 const HEADS = [{ id: 'end', label: 'Punta' }, { id: 'both', label: 'Doble' }, { id: 'none', label: 'Sin punta' }] as const;
 
 /** Altura que ocupa el teclado cuando solo reduce el viewport visual (iOS). En Android el layout ya se reduce. */
@@ -282,6 +283,14 @@ const Studio = () => {
               {DASHES.map(d => <Chip key={d.id} active={(ast.dash || 'solid') === d.id} onClick={() => patchArrow({ dash: d.id })}>{d.label}</Chip>)}
               <span className="w-px h-6 bg-white/25 shrink-0" />
               {HEADS.map(h => <Chip key={h.id} active={(ast.head || 'end') === h.id} onClick={() => patchArrow({ head: h.id })}>{h.label}</Chip>)}
+            </Row>
+            <Row>
+              {HEAD_SHAPES.map(h => <Chip key={h.id} active={(ast.headShape || 'triangle') === h.id} onClick={() => patchArrow({ headShape: h.id })} className="min-w-[44px] justify-center"><span aria-label={`Cabeza ${h.id}`}>{h.label}</span></Chip>)}
+            </Row>
+            <Row>
+              {([['shadow', 'Sombra'], ['outline', 'Contorno'], ['depth', '3D']] as const).map(([k, l]) => (
+                <Chip key={k} active={!!ast[k]} onClick={() => patchArrow({ [k]: !ast[k] })}>{l}</Chip>
+              ))}
             </Row>
             <div className="flex items-center gap-3 px-1 min-h-[44px]">
               <span className="text-xs font-bold text-gray-300 w-14">Cabeza</span>

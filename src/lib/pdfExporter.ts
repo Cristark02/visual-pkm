@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { arrowGeometry } from './arrowGeometry';
+import { arrowLayers } from './arrowGeometry';
 import 'svg2pdf.js';
 import { STAR_POINTS, HEART_PATH } from './imageShapes';
 import { useStore } from '../store/useStore';
@@ -186,9 +186,7 @@ export async function exportToVectorPDF() {
       // Flecha libre: línea + cabezas, rotada alrededor de su cola
       const st = storeNode.data.arrowStyle || {};
       const ang = st.angle ?? 0;
-      const col = st.color || '#475569';
-      const dash = st.dash || 'solid';
-      const geo = arrowGeometry(st, 0);
+      const { geo, layers } = arrowLayers(st, 0);
       const cyA = y + h / 2;
       const rad = (ang * Math.PI) / 180;
       const cos = Math.cos(rad), sin = Math.sin(rad);
@@ -197,12 +195,8 @@ export async function exportToVectorPDF() {
         minX = Math.min(minX, wx); minY = Math.min(minY, wy);
         maxX = Math.max(maxX, wx); maxY = Math.max(maxY, wy);
       }
-      const da = dash === 'dashed' ? `${geo.avgThickness * 3} ${geo.avgThickness * 2}` : dash === 'dotted' ? `0.1 ${geo.avgThickness * 2.2}` : 'none';
       nodesSvgString += `<g transform="translate(${x} ${cyA}) rotate(${ang})">
-        ${dash === 'solid'
-          ? `<path d="${geo.bodyPath}" fill="${col}" />`
-          : `<path d="${geo.trimmedPath}" fill="none" stroke="${col}" stroke-width="${geo.avgThickness}" stroke-dasharray="${da}" stroke-linecap="${dash === 'dotted' ? 'round' : 'butt'}" />`}
-        ${geo.heads.map(d => `<path d="${d}" fill="${col}" />`).join('')}
+        ${layers.map(l => `<path d="${l.d}" fill="${l.fill}" stroke="${l.stroke === 'rgba(0,0,0,0)' ? 'none' : l.stroke}" stroke-width="${l.sw}"${l.dash ? ` stroke-dasharray="${l.dash}"` : ''}${l.cap ? ` stroke-linecap="${l.cap}"` : ''}${l.join ? ` stroke-linejoin="${l.join}"` : ''}${l.opacity ? ` opacity="${l.opacity}"` : ''} transform="translate(${l.dx} ${l.dy})" />`).join('')}
       </g>`;
     } else if (storeNode?.type === 'textAnnotation') {
       const sc = storeNode.data.styleConfig || {};

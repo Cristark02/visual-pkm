@@ -5,7 +5,7 @@ import { Trash2, Minus, ArrowRight, ArrowLeftRight } from 'lucide-react';
 import type { NodeData, ArrowStyle } from '../../types/store';
 import { useStore } from '../../store/useStore';
 import { useUIMode } from '../../lib/useMedia';
-import { arrowGeometry } from '../../lib/arrowGeometry';
+import { arrowLayers } from '../../lib/arrowGeometry';
 
 /** Altura fija del contenedor del nodo; el dibujo vive centrado en ella. */
 const ARROW_BOX_H = 24;
@@ -17,8 +17,12 @@ const DASHES: { id: NonNullable<ArrowStyle['dash']>; label: string }[] = [
   { id: 'dotted', label: 'Puntos' },
 ];
 
-const dashArray = (dash: ArrowStyle['dash'], t: number) =>
-  dash === 'dashed' ? `${t * 3} ${t * 2}` : dash === 'dotted' ? `0.1 ${t * 2.2}` : undefined;
+export const HEAD_SHAPES: { id: NonNullable<ArrowStyle['headShape']>; label: string; icon: string }[] = [
+  { id: 'triangle', label: 'Triángulo', icon: '▶' },
+  { id: 'round', label: 'Redonda', icon: '●' },
+  { id: 'diamond', label: 'Rombo', icon: '◆' },
+  { id: 'open', label: 'Abierta', icon: '>' },
+];
 
 /**
  * Flecha libre (sticker): no se conecta a ningún nodo. Es 100 % personalizable:
@@ -38,7 +42,7 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
   const head = st.head || 'end';
   const dash = st.dash || 'solid';
   const cy = ARROW_BOX_H / 2;
-  const geo = arrowGeometry({ ...st, length, thickness: t, headThickness: t1 }, cy);
+  const { geo, layers } = arrowLayers({ ...st, length, angle, thickness: t, headThickness: t1 }, cy);
 
   const touchUI = useUIMode() !== 'desktop';
   const patchStyle = (patch: Partial<ArrowStyle>, history = true) => {
@@ -169,6 +173,18 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
             <button type="button" title="Una cabeza" onClick={() => patchStyle({ head: 'end' })} className={`p-1 rounded-lg ${head === 'end' ? 'bg-white/25' : 'hover:bg-white/10'}`}><ArrowRight size={14} /></button>
             <button type="button" title="Dos cabezas" onClick={() => patchStyle({ head: 'both' })} className={`p-1 rounded-lg ${head === 'both' ? 'bg-white/25' : 'hover:bg-white/10'}`}><ArrowLeftRight size={14} /></button>
           </div>
+          <div className="flex items-center gap-0.5 border-l border-white/20 pl-2">
+            {HEAD_SHAPES.map(h => (
+              <button key={h.id} type="button" title={h.label} onClick={() => patchStyle({ headShape: h.id })}
+                className={`px-1.5 py-0.5 rounded-lg text-xs font-bold ${(st.headShape || 'triangle') === h.id ? 'bg-white/25' : 'hover:bg-white/10'}`}>{h.icon}</button>
+            ))}
+          </div>
+          <div className="flex items-center gap-0.5 border-l border-white/20 pl-2">
+            {([['shadow', 'Sombra'], ['outline', 'Contorno'], ['depth', '3D']] as const).map(([k, label]) => (
+              <button key={k} type="button" onClick={() => patchStyle({ [k]: !st[k] })}
+                className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold ${st[k] ? 'bg-white/25' : 'hover:bg-white/10'}`}>{label}</button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={() => useStore.getState().removeNode(id)}
@@ -195,18 +211,18 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
           strokeLinecap="round"
           style={{ pointerEvents: 'stroke' }}
         />
-        {dash === 'solid' ? (
-          <path d={geo.bodyPath} fill={color} style={{ pointerEvents: 'none' }} />
-        ) : (
+        <defs>
+          <filter id={`ab-${id}`} x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="3" /></filter>
+        </defs>
+        {layers.map((l, i) => (
           <path
-            d={geo.trimmedPath} fill="none" stroke={color}
-            strokeWidth={geo.avgThickness}
-            strokeLinecap={dash === 'dotted' ? 'round' : 'butt'}
-            strokeDasharray={dashArray(dash, geo.avgThickness)}
+            key={i} d={l.d} fill={l.fill} stroke={l.stroke} strokeWidth={l.sw}
+            strokeDasharray={l.dash} strokeLinecap={l.cap} strokeLinejoin={l.join}
+            opacity={l.opacity} filter={l.blur ? `url(#ab-${id})` : undefined}
+            transform={l.dx || l.dy ? `translate(${l.dx} ${l.dy})` : undefined}
             style={{ pointerEvents: 'none' }}
           />
-        )}
-        {geo.heads.map((d, i) => <path key={i} d={d} fill={color} style={{ pointerEvents: 'none' }} />)}
+        ))}
 
         {selected && (
           <>

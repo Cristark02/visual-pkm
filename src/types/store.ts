@@ -25,6 +25,14 @@ export interface ArrowStyle {
   dash?: 'solid' | 'dashed' | 'dotted';
   head?: 'end' | 'both' | 'none';
   color?: string;
+  /** Forma de la cabeza (por defecto triángulo). */
+  headShape?: 'triangle' | 'round' | 'diamond' | 'open';
+  /** Sombra suave bajo la flecha. */
+  shadow?: boolean;
+  /** Contorno oscuro alrededor. */
+  outline?: boolean;
+  /** Efecto 3D: capa inferior más oscura. */
+  depth?: boolean;
 }
 
 export interface IdentityData {
