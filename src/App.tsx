@@ -391,7 +391,7 @@ function App() {
           </header>
         )}
 
-        <main className="flex-1 relative flex">
+        <main className="flex-1 min-h-0 relative flex">
           <ReactFlowProvider>
             <div className="flex-1 relative">
               <GraphCanvas />
@@ -406,7 +406,7 @@ function App() {
           </ReactFlowProvider>
           
           {selectedEntityId && mode !== 'phone' && !connectFrom && !(touchUI && ['textAnnotation', 'imageAnnotation', 'arrowAnnotation'].includes(nodes.find(n => n.id === selectedEntityId)?.type ?? '')) && (
-            <div className="relative h-full w-80 shrink-0 bg-white border-l border-gray-200 z-40">
+            <div className="relative h-full min-h-0 w-80 shrink-0 bg-white border-l border-gray-200 z-40">
               <Sidebar />
             </div>
           )}

@@ -16,8 +16,12 @@ export interface ArrowStyle {
   length?: number;
   /** Ángulo en grados (0 = hacia la derecha). */
   angle?: number;
-  /** Anchura (grosor) del trazo. */
+  /** Grosor en la cola. */
   thickness?: number;
+  /** Grosor junto a la cabeza (por defecto, igual que la cola). */
+  headThickness?: number;
+  /** Curvatura: desvío (perpendicular) del punto medio respecto a la recta. 0 = recta. */
+  bend?: number;
   dash?: 'solid' | 'dashed' | 'dotted';
   head?: 'end' | 'both' | 'none';
   color?: string;

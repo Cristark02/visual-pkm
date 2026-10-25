@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { arrowGeometry } from './arrowGeometry';
 import 'svg2pdf.js';
 import { STAR_POINTS, HEART_PATH } from './imageShapes';
 import { useStore } from '../store/useStore';
@@ -184,26 +185,24 @@ export async function exportToVectorPDF() {
     } else if (storeNode?.type === 'arrowAnnotation') {
       // Flecha libre: línea + cabezas, rotada alrededor de su cola
       const st = storeNode.data.arrowStyle || {};
-      const len = st.length ?? 160;
       const ang = st.angle ?? 0;
-      const t = st.thickness ?? 4;
       const col = st.color || '#475569';
-      const head = st.head || 'end';
       const dash = st.dash || 'solid';
-      const hs = 6 + t * 2;
+      const geo = arrowGeometry(st, 0);
       const cyA = y + h / 2;
-      const x0 = x + (head === 'both' ? hs * 0.8 : 0);
-      const x1 = x + len - (head !== 'none' ? hs * 0.8 : 0);
-      const da = dash === 'dashed' ? `${t * 3} ${t * 2}` : dash === 'dotted' ? `0.1 ${t * 2.2}` : 'none';
       const rad = (ang * Math.PI) / 180;
-      const tipX = x + Math.cos(rad) * len;
-      const tipY = cyA + Math.sin(rad) * len;
-      minX = Math.min(minX, tipX - hs); minY = Math.min(minY, tipY - hs);
-      maxX = Math.max(maxX, tipX + hs); maxY = Math.max(maxY, tipY + hs);
-      nodesSvgString += `<g transform="rotate(${ang} ${x} ${cyA})">
-        <line x1="${x0}" y1="${cyA}" x2="${x1}" y2="${cyA}" stroke="${col}" stroke-width="${t}" stroke-dasharray="${da}" stroke-linecap="${dash === 'dotted' ? 'round' : 'butt'}" />
-        ${head !== 'none' ? `<polygon points="${x + len},${cyA} ${x + len - hs},${cyA - hs * 0.6} ${x + len - hs},${cyA + hs * 0.6}" fill="${col}" />` : ''}
-        ${head === 'both' ? `<polygon points="${x},${cyA} ${x + hs},${cyA - hs * 0.6} ${x + hs},${cyA + hs * 0.6}" fill="${col}" />` : ''}
+      const cos = Math.cos(rad), sin = Math.sin(rad);
+      for (const [lx, ly] of [[geo.bbox.minX, geo.bbox.minY], [geo.bbox.maxX, geo.bbox.minY], [geo.bbox.minX, geo.bbox.maxY], [geo.bbox.maxX, geo.bbox.maxY]]) {
+        const wx = x + lx * cos - ly * sin, wy = cyA + lx * sin + ly * cos;
+        minX = Math.min(minX, wx); minY = Math.min(minY, wy);
+        maxX = Math.max(maxX, wx); maxY = Math.max(maxY, wy);
+      }
+      const da = dash === 'dashed' ? `${geo.avgThickness * 3} ${geo.avgThickness * 2}` : dash === 'dotted' ? `0.1 ${geo.avgThickness * 2.2}` : 'none';
+      nodesSvgString += `<g transform="translate(${x} ${cyA}) rotate(${ang})">
+        ${dash === 'solid'
+          ? `<path d="${geo.bodyPath}" fill="${col}" />`
+          : `<path d="${geo.trimmedPath}" fill="none" stroke="${col}" stroke-width="${geo.avgThickness}" stroke-dasharray="${da}" stroke-linecap="${dash === 'dotted' ? 'round' : 'butt'}" />`}
+        ${geo.heads.map(d => `<path d="${d}" fill="${col}" />`).join('')}
       </g>`;
     } else if (storeNode?.type === 'textAnnotation') {
       const sc = storeNode.data.styleConfig || {};

@@ -5,6 +5,7 @@ import { Trash2, Minus, ArrowRight, ArrowLeftRight } from 'lucide-react';
 import type { NodeData, ArrowStyle } from '../../types/store';
 import { useStore } from '../../store/useStore';
 import { useUIMode } from '../../lib/useMedia';
+import { arrowGeometry } from '../../lib/arrowGeometry';
 
 /** Altura fija del contenedor del nodo; el dibujo vive centrado en ella. */
 const ARROW_BOX_H = 24;
@@ -31,15 +32,13 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
   const st: ArrowStyle = data.arrowStyle || {};
   const length = Math.max(MIN_LEN, st.length ?? 160);
   const angle = st.angle ?? 0;
-  const t = Math.min(24, Math.max(1, st.thickness ?? 4));
+  const t = Math.min(40, Math.max(1, st.thickness ?? 4));
+  const t1 = Math.min(40, Math.max(1, st.headThickness ?? t));
   const color = st.color || '#475569';
   const head = st.head || 'end';
   const dash = st.dash || 'solid';
-
-  const hs = 6 + t * 2; // tamaño de la cabeza
-  const startInset = head === 'both' ? hs * 0.8 : 0;
-  const endInset = head !== 'none' ? hs * 0.8 : 0;
   const cy = ARROW_BOX_H / 2;
+  const geo = arrowGeometry({ ...st, length, thickness: t, headThickness: t1 }, cy);
 
   const touchUI = useUIMode() !== 'desktop';
   const patchStyle = (patch: Partial<ArrowStyle>, history = true) => {
@@ -95,8 +94,30 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
     e.currentTarget.releasePointerCapture?.(e.pointerId);
   };
 
-  const headPoly = (x: number, dir: 1 | -1) =>
-    `${x},${cy} ${x - dir * hs},${cy - hs * 0.6} ${x - dir * hs},${cy + hs * 0.6}`;
+  // --- Arrastre del punto medio (curvatura) ---
+  const bending = useRef(false);
+  const bendDown = (e: React.PointerEvent<SVGCircleElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    bending.current = true;
+    useStore.getState().pushSnapshot();
+  };
+  const bendMove = (e: React.PointerEvent<SVGCircleElement>) => {
+    if (!bending.current) return;
+    e.stopPropagation();
+    const p = flow.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    const rad = (angle * Math.PI) / 180;
+    const vx = p.x - xPos, vy = p.y - (yPos + cy);
+    // coordenada perpendicular a la flecha, en su marco local
+    let ly = -vx * Math.sin(rad) + vy * Math.cos(rad);
+    if (Math.abs(ly) < 8) ly = 0; // imán a recta
+    useStore.getState().updateNodeData(id, { arrowStyle: { ...st, bend: Math.round(ly) } }, { history: false });
+  };
+  const bendUp = (e: React.PointerEvent<SVGCircleElement>) => {
+    bending.current = false;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+  };
 
   return (
     <div
@@ -105,7 +126,7 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
     >
       {/* Barra flotante (no rota con la flecha) */}
       {selected && !touchUI && (
-        <div className="absolute left-0 bottom-full mb-8 bg-gray-900/90 backdrop-blur-md px-2 py-1.5 rounded-2xl shadow-xl flex items-center gap-2 z-50 text-white nodrag nopan pointer-events-auto whitespace-nowrap">
+        <div className="absolute left-0 bottom-full bg-gray-900/90 backdrop-blur-md px-2 py-1.5 rounded-2xl shadow-xl flex flex-wrap items-center gap-x-2 gap-y-1 z-50 text-white nodrag nopan pointer-events-auto w-max max-w-[440px]" style={{ marginBottom: Math.max(0, -geo.bbox.minY) + 20 }}>
           <input
             type="color"
             value={color}
@@ -113,13 +134,22 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
             className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0"
             title="Color"
           />
-          <label className="flex items-center gap-1 text-[10px] font-bold uppercase text-gray-300" title="Anchura del trazo">
-            Ancho
+          <label className="flex items-center gap-1 text-[10px] font-bold uppercase text-gray-300" title="Grosor en la cola">
+            Cola
             <input
-              type="range" min={1} max={16} step={1}
+              type="range" min={1} max={40} step={1}
               value={t}
               onChange={e => patchStyle({ thickness: parseInt(e.target.value) })}
-              className="w-20 accent-indigo-400"
+              className="w-16 accent-indigo-400"
+            />
+          </label>
+          <label className="flex items-center gap-1 text-[10px] font-bold uppercase text-gray-300" title="Grosor en la cabeza">
+            Cabeza
+            <input
+              type="range" min={1} max={40} step={1}
+              value={t1}
+              onChange={e => patchStyle({ headThickness: parseInt(e.target.value) })}
+              className="w-16 accent-indigo-400"
             />
           </label>
           <div className="flex items-center gap-0.5 border-l border-white/20 pl-2">
@@ -158,27 +188,25 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
         style={{ transformOrigin: `0px ${cy}px`, transform: `rotate(${angle}deg)` }}
       >
         {/* Zona de clic: solo el trazo (hitbox estricta, no un rectángulo) */}
-        <line
-          x1={0} y1={cy} x2={length} y2={cy}
+        <path
+          d={geo.centerPath} fill="none"
           stroke="transparent"
-          strokeWidth={Math.max(t, 20)}
+          strokeWidth={Math.max(Math.max(t, t1), 20)}
           strokeLinecap="round"
           style={{ pointerEvents: 'stroke' }}
         />
-        <line
-          x1={startInset} y1={cy} x2={length - endInset} y2={cy}
-          stroke={color}
-          strokeWidth={t}
-          strokeLinecap={dash === 'dotted' ? 'round' : 'butt'}
-          strokeDasharray={dashArray(dash, t)}
-          style={{ pointerEvents: 'none' }}
-        />
-        {head !== 'none' && (
-          <polygon points={headPoly(length, 1)} fill={color} style={{ pointerEvents: 'none' }} />
+        {dash === 'solid' ? (
+          <path d={geo.bodyPath} fill={color} style={{ pointerEvents: 'none' }} />
+        ) : (
+          <path
+            d={geo.trimmedPath} fill="none" stroke={color}
+            strokeWidth={geo.avgThickness}
+            strokeLinecap={dash === 'dotted' ? 'round' : 'butt'}
+            strokeDasharray={dashArray(dash, geo.avgThickness)}
+            style={{ pointerEvents: 'none' }}
+          />
         )}
-        {head === 'both' && (
-          <polygon points={headPoly(0, -1)} fill={color} style={{ pointerEvents: 'none' }} />
-        )}
+        {geo.heads.map((d, i) => <path key={i} d={d} fill={color} style={{ pointerEvents: 'none' }} />)}
 
         {selected && (
           <>
@@ -188,6 +216,13 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
               className="nodrag nopan arrow-handle"
               style={{ pointerEvents: 'all', touchAction: 'none' }}
               onPointerDown={down('tip')} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+            />
+            <circle
+              cx={geo.mid[0]} cy={geo.mid[1]} r={9}
+              fill="#4f46e5" stroke="#ffffff" strokeWidth={2.5}
+              className="nodrag nopan arrow-handle"
+              style={{ pointerEvents: 'all', touchAction: 'none' }}
+              onPointerDown={bendDown} onPointerMove={bendMove} onPointerUp={bendUp} onPointerCancel={bendUp}
             />
             <circle
               cx={0} cy={cy} r={9}

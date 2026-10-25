@@ -76,7 +76,7 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
     if (e.key === 'Escape') setIsEditing(false);
   };
 
-  let shapeClasses = `w-20 h-20 shadow-lg flex items-center justify-center transition-all duration-300 relative z-10 ${selected ? 'ring-4 ring-indigo-500 scale-105' : 'border border-gray-200 hover:shadow-xl hover:scale-105'}`;
+  let shapeClasses = `w-20 h-20 flex items-center justify-center transition-all duration-300 relative z-10 ${selected ? 'ring-4 ring-indigo-500 scale-105' : 'border border-gray-200 hover:shadow-xl hover:scale-105'}`;
   
   if (computedShape === 'circle') shapeClasses += ' rounded-full';
   else if (computedShape === 'square') shapeClasses += ' rounded-2xl';
@@ -133,10 +133,10 @@ const IndividualNode = ({ id, data, selected }: NodeProps<NodeData>) => {
         <span className="text-[12px] font-bold">+</span>
       </div>
 
-      <div className={`w-20 h-20 flex items-center justify-center transition-all duration-300 relative z-10 ${selected ? 'scale-110 shadow-xl' : 'hover:scale-105 hover:shadow-lg'}`}>
+      <div className={`w-20 h-20 flex items-center justify-center transition-all duration-300 relative z-10 ${selected ? 'scale-110' : 'hover:scale-105'}`} style={{ filter: selected ? 'drop-shadow(0 8px 10px rgba(15,23,42,0.22))' : 'drop-shadow(0 3px 4px rgba(15,23,42,0.16))' }}>
         {/* Outer Wrapper for the Colored Border */}
         <div 
-          className="absolute inset-0 w-full h-full drop-shadow-sm"
+          className="absolute inset-0 w-full h-full"
           style={{
             backgroundColor: borderColor,
             clipPath: clipPathStyle !== 'none' ? clipPathStyle : undefined,

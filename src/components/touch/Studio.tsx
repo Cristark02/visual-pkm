@@ -169,7 +169,7 @@ const Studio = () => {
       onChange: v => patchData({ visualDimensions: { width: v, height: Math.round(v * (dims.h / (dims.w || 1))) } }),
     };
   } else if (type === 'arrowAnnotation') {
-    side = { label: 'Grosor', value: ast.thickness ?? 4, min: 1, max: 24, step: 1, onChange: v => patchArrow({ thickness: v }) };
+    side = { label: 'Cola', value: ast.thickness ?? 4, min: 1, max: 40, step: 1, onChange: v => patchArrow({ thickness: v }) };
   }
 
   const title = type === 'textAnnotation' ? 'Texto' : type === 'imageAnnotation' ? 'Foto' : 'Flecha';
@@ -190,7 +190,7 @@ const Studio = () => {
         <input
           type="range" min={side.min} max={side.max} step={side.step} value={side.value}
           onChange={e => side!.onChange(Number(e.target.value))}
-          aria-label="Tamaño" className="ig-range pointer-events-auto" data-studio-side
+          aria-label={side.label === 'Cola' ? 'Grosor de la cola' : 'Tamaño'} className="ig-range pointer-events-auto" data-studio-side
           style={{ position: 'absolute', left: 6, top: 96, height: 'min(32vh, 260px)', zIndex: 5 }}
         />
       )}
@@ -283,6 +283,22 @@ const Studio = () => {
               <span className="w-px h-6 bg-white/25 shrink-0" />
               {HEADS.map(h => <Chip key={h.id} active={(ast.head || 'end') === h.id} onClick={() => patchArrow({ head: h.id })}>{h.label}</Chip>)}
             </Row>
+            <div className="flex items-center gap-3 px-1 min-h-[44px]">
+              <span className="text-xs font-bold text-gray-300 w-14">Cabeza</span>
+              <input
+                type="range" min={1} max={40} step={1} value={ast.headThickness ?? ast.thickness ?? 4}
+                onChange={e => patchArrow({ headThickness: Number(e.target.value) })}
+                className="flex-1" style={{ accentColor: '#ffffff', height: 36 }} aria-label="Cabeza"
+              />
+            </div>
+            <div className="flex items-center gap-3 px-1 min-h-[44px]">
+              <span className="text-xs font-bold text-gray-300 w-14">Curva</span>
+              <input
+                type="range" min={-300} max={300} step={1} value={ast.bend ?? 0}
+                onChange={e => patchArrow({ bend: Number(e.target.value) })}
+                className="flex-1" style={{ accentColor: '#ffffff', height: 36 }} aria-label="Curva"
+              />
+            </div>
             <div className="flex items-center gap-3 px-1 min-h-[44px]">
               <span className="text-xs font-bold text-gray-300 w-14">Largo</span>
               <input
