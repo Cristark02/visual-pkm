@@ -105,7 +105,53 @@ const ImageAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
   };
 
   return (
-    <div className="relative group select-none" style={{ transform: rotation ? `rotate(${rotation}deg)` : undefined, transformOrigin: 'center' }}>
+    <div className="relative group select-none">
+    {imageUrl && selected && !touchUI && (
+      <div className="absolute -top-11 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-900/90 backdrop-blur-sm px-1.5 py-1 rounded-xl nodrag nopan z-50 text-white whitespace-nowrap">
+        <button
+          type="button"
+          onClick={cycleShape}
+          className="flex items-center gap-1 px-1.5 py-1 rounded-lg hover:bg-white/15 text-[11px] font-bold"
+          title="Cambiar forma (también: clic sobre la imagen)"
+        >
+          <Shapes size={14} /> {SHAPE_LABEL[shape]}
+        </button>
+        <button
+          type="button"
+          onClick={() => setCropMode(v => !v)}
+          className={`flex items-center gap-1 px-1.5 py-1 rounded-lg text-[11px] font-bold ${cropMode ? 'bg-indigo-500' : 'hover:bg-white/15'}`}
+          title="Recortar / encuadrar"
+        >
+          {cropMode ? <Check size={14} /> : <Crop size={14} />} {cropMode ? 'Listo' : 'Recortar'}
+        </button>
+        {cropMode && (
+          <input
+            type="range" min={1} max={3} step={0.05}
+            value={zoom}
+            onChange={e => changeZoom(parseFloat(e.target.value))}
+            className="w-24 accent-indigo-400"
+            title="Zoom"
+          />
+        )}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="p-1 rounded-lg hover:bg-white/15"
+          title="Cambiar imagen"
+        >
+          <Upload size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={() => removeNode(id)}
+          className="p-1 rounded-lg text-red-400 hover:text-red-300 hover:bg-white/10"
+          title="Eliminar"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    )}
+      <div className="relative" style={{ transform: rotation ? `rotate(${rotation}deg)` : undefined, transformOrigin: 'center' }}>
       <ResizeHandles id={id} xPos={xPos} yPos={yPos} mode={keepAspect ? 'uniform' : 'free'} rotation={rotation} rotatable visible={selected && !crop} minW={60} minH={60} />
 
       <input 
@@ -127,53 +173,6 @@ const ImageAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
 
       {imageUrl ? (
         <>
-          {/* Barra de edición */}
-          {selected && !touchUI && (
-            <div className="absolute -top-11 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-900/90 backdrop-blur-sm px-1.5 py-1 rounded-xl nodrag nopan z-50 text-white whitespace-nowrap">
-              <button
-                type="button"
-                onClick={cycleShape}
-                className="flex items-center gap-1 px-1.5 py-1 rounded-lg hover:bg-white/15 text-[11px] font-bold"
-                title="Cambiar forma (también: clic sobre la imagen)"
-              >
-                <Shapes size={14} /> {SHAPE_LABEL[shape]}
-              </button>
-              <button
-                type="button"
-                onClick={() => setCropMode(v => !v)}
-                className={`flex items-center gap-1 px-1.5 py-1 rounded-lg text-[11px] font-bold ${cropMode ? 'bg-indigo-500' : 'hover:bg-white/15'}`}
-                title="Recortar / encuadrar"
-              >
-                {cropMode ? <Check size={14} /> : <Crop size={14} />} {cropMode ? 'Listo' : 'Recortar'}
-              </button>
-              {cropMode && (
-                <input
-                  type="range" min={1} max={3} step={0.05}
-                  value={zoom}
-                  onChange={e => changeZoom(parseFloat(e.target.value))}
-                  className="w-24 accent-indigo-400"
-                  title="Zoom"
-                />
-              )}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="p-1 rounded-lg hover:bg-white/15"
-                title="Cambiar imagen"
-              >
-                <Upload size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => removeNode(id)}
-                className="p-1 rounded-lg text-red-400 hover:text-red-300 hover:bg-white/10"
-                title="Eliminar"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          )}
-
           {/* La sombra va en el contenedor: el clip-path del hijo recortaría un box-shadow */}
           <div style={{ width: `${w}px`, height: `${h}px`, filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.25))' }}>
             <div
@@ -206,6 +205,7 @@ const ImageAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
           <span className="text-[10px] text-gray-400 mt-0.5">Click para seleccionar</span>
         </div>
       )}
+      </div>
     </div>
   );
 };

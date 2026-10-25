@@ -89,12 +89,10 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
   return (
     <div 
       className="relative group select-none"
-      style={{ transform: rotation ? `rotate(${rotation}deg)` : undefined, transformOrigin: 'center' }}
       onDoubleClick={() => { if (!touchUI) setIsEditing(true); }}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
     >
-      <ResizeHandles id={id} xPos={xPos} yPos={yPos} mode="font" fontSize={fontSize} rotation={rotation} rotatable visible={selected && !studioOpen && !isEditing} />
 
       {/* Barra de edición. Su contenedor (pb-3 transparente) hace de "puente de seguridad"
           entre el texto y los botones: moverse hacia ella nunca sale del hover. */}
@@ -213,6 +211,8 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
         </div>
       )}
 
+      <div className="relative" style={{ transform: rotation ? `rotate(${rotation}deg)` : undefined, transformOrigin: 'center' }}>
+      <ResizeHandles id={id} xPos={xPos} yPos={yPos} mode="font" fontSize={fontSize} rotation={rotation} rotatable visible={selected && !studioOpen && !isEditing} />
       <div
         style={{
           outline: selected && !studioOpen ? '1.5px solid rgba(99,102,241,0.75)' : (isEmpty && hovered ? '2px dashed rgba(99,102,241,0.5)' : undefined),
@@ -233,6 +233,7 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
             placeholder: 'Escribe aquí…',
           } : undefined}
         />
+      </div>
       </div>
     </div>
   );

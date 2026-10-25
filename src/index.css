@@ -65,7 +65,7 @@ html, body { overscroll-behavior: none; }
 .touch-ui .react-flow__resize-control.handle { width: calc(34px / var(--rf-zoom, 1)) !important; height: calc(34px / var(--rf-zoom, 1)) !important; border-width: calc(3px / var(--rf-zoom, 1)) !important; }
 .touch-ui .react-flow__node .nodrag button,
 .touch-ui .react-flow__node button { min-width: 40px; min-height: 40px; }
-.touch-ui .arrow-handle { r: 15px; }
+.touch-ui .arrow-handle { r: calc(13px / var(--rf-zoom, 1)); stroke-width: calc(2.5px / var(--rf-zoom, 1)); }
 .touch-ui .react-flow__edge-interaction { stroke-width: 40px; }
 .touch-ui .sidebar-panel button { min-height: 44px; }
 .touch-ui .sidebar-panel button.rounded-full { min-width: 40px; min-height: 40px; }
