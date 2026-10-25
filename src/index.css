@@ -126,3 +126,27 @@ html, body { overscroll-behavior: none; }
 .touch-ui .rz-handle[data-h="ne"] { margin: calc(-10px / var(--rf-zoom, 1)) 0 0 calc(10px / var(--rf-zoom, 1)); }
 .touch-ui .rz-handle[data-h="se"] { margin: calc(10px / var(--rf-zoom, 1)) 0 0 calc(10px / var(--rf-zoom, 1)); }
 .touch-ui .rz-handle[data-h="sw"] { margin: calc(10px / var(--rf-zoom, 1)) 0 0 calc(-10px / var(--rf-zoom, 1)); }
+
+/* Botón de giro: semielipse con dos flechas, siempre a ~40px bajo el elemento */
+.rz-rotate { margin-top: calc(40px / var(--rf-zoom, 1)); }
+.rz-rotate-btn {
+  display: block; box-sizing: border-box;
+  width: calc(34px / var(--rf-zoom, 1)); height: calc(34px / var(--rf-zoom, 1));
+  padding: calc(5px / var(--rf-zoom, 1)); border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 6px rgba(0,0,0,.4);
+}
+.touch-ui .rz-rotate-btn { width: calc(40px / var(--rf-zoom, 1)); height: calc(40px / var(--rf-zoom, 1)); padding: calc(6px / var(--rf-zoom, 1)); }
+.touch-ui .rz-rotate { margin-top: calc(48px / var(--rf-zoom, 1)); }
+
+/* Barra de tamaño estilo historias: línea fina vertical con un botón redondo */
+.ig-range {
+  -webkit-appearance: none; appearance: none; background: transparent;
+  writing-mode: vertical-lr; direction: rtl; width: 40px; touch-action: none; cursor: pointer;
+}
+.ig-range::-webkit-slider-runnable-track { width: 3px; background: rgba(255,255,255,.65); border-radius: 2px; }
+.ig-range::-moz-range-track { width: 3px; background: rgba(255,255,255,.65); border-radius: 2px; }
+.ig-range::-webkit-slider-thumb { -webkit-appearance: none; width: 34px; height: 34px; margin-left: -15.5px; border-radius: 50%; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.5); border: 0; }
+.ig-range::-moz-range-thumb { width: 34px; height: 34px; border-radius: 50%; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.5); border: 0; }
+
+/* Texto editable: placeholder cuando está vacío */
+.tb-edit:empty::before { content: attr(data-placeholder); opacity: 0.45; pointer-events: none; }

@@ -101,6 +101,7 @@ export async function exportToVectorPDF() {
     const y = parseFloat(match[2]);
     const w = node.offsetWidth;
     const h = node.offsetHeight;
+    const markStart = nodesSvgString.length;
 
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
@@ -314,6 +315,13 @@ export async function exportToVectorPDF() {
         nodesSvgString += `<rect x="${cx - (rectWidth / 2)}" y="${y + h + 6}" width="${rectWidth}" height="22" fill="#ffffff" stroke="#e5e7eb" stroke-width="1" rx="10" filter="url(#drop-shadow)"></rect>`;
         nodesSvgString += `<text x="${cx}" y="${y + h + 21}" fill="${textColor}" font-size="11" font-family="${FONT_FAMILY}" font-weight="bold" text-anchor="middle">${name}</text>`;
       }
+    }
+
+    // Textos y fotos girados: se envuelve lo dibujado en una rotación alrededor de su centro
+    const rotDeg = storeNode?.data?.rotation;
+    if (rotDeg && (storeNode?.type === 'textAnnotation' || storeNode?.type === 'imageAnnotation')) {
+      nodesSvgString = nodesSvgString.slice(0, markStart)
+        + `<g transform="rotate(${rotDeg} ${x + w / 2} ${y + h / 2})">${nodesSvgString.slice(markStart)}</g>`;
     }
   }
 

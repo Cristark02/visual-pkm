@@ -47,6 +47,8 @@ export interface NodeData {
   };
   visualPosition?: { x: number, y: number };
   visualDimensions?: { width: number, height: number };
+  /** Giro en grados (texto y fotos), alrededor del centro. */
+  rotation?: number;
   imageStyle?: ImageStyle;
   arrowStyle?: ArrowStyle;
   clusterIds?: string[];
@@ -63,6 +65,8 @@ export interface NodeData {
     textAlign?: 'left' | 'center' | 'right';
     /** Efecto del texto (sin fondo o con él). Sin definir = comportamiento clásico. */
     textEffect?: 'none' | 'shadow' | 'outline' | 'glow';
+    /** Ancho máximo del texto en em (se ajusta a líneas como en las historias). Sin definir = una sola línea por párrafo. */
+    wrapEm?: number;
   };
 }
 

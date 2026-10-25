@@ -6,7 +6,8 @@ import type { NodeData } from '../../types/store';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import { useUIMode } from '../../lib/useMedia';
-import { TEXT_FONTS, textFont, effectShadow } from '../../lib/textFonts';
+import { TEXT_FONTS } from '../../lib/textFonts';
+import TextBlock, { focusEnd } from '../TextBlock';
 
 const ALIGNS = [
   { id: 'left', icon: AlignLeft, title: 'Alinear a la izquierda' },
@@ -24,10 +25,9 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
   const [isEditing, setIsEditing] = useState(false);
   const [hovered, setHovered] = useState(false);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLElement | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const touchUI = useUIMode() !== 'desktop';
-  // En táctil el editor a pantalla completa (Studio) manda: mientras está abierto se escribe en el propio texto
   const studioOpen = useUI(st => st.studioId === id);
 
   const styleConfig = data.styleConfig || {};
@@ -38,28 +38,16 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
   const bgColor = styleConfig.bgColor || '#ffffff';
   const textAlign = styleConfig.textAlign || 'center';
   const fontSize = styleConfig.fontSize || 20;
-  const textEffect = styleConfig.textEffect;
   const showBackground = styleConfig.showBackground !== false && highlightStyle !== 'transparent';
   const roundShape = highlightStyle !== 'solid';
 
-  const editing = isEditing || studioOpen;
-
-  // Mientras se escribe, el texto es local (no depende de la ida y vuelta por el store y React Flow,
-  // que perdía letras al teclear rápido); se vuelca al documento en cada pulsación.
-  const [draft, setDraft] = useState(text);
-  const [prevEditing, setPrevEditing] = useState(false);
-  if (editing !== prevEditing) { setPrevEditing(editing); if (editing) setDraft(text); }
-  const shown = editing ? draft : text;
+  const editing = isEditing;
 
   useEffect(() => {
-    if (!editing || !textareaRef.current) return;
-    textareaRef.current.focus();
-    textareaRef.current.select();
-    // El toque que abrió el editor puede mover el foco justo después: se reintenta una vez
-    const t = setTimeout(() => {
-      if (document.activeElement !== textareaRef.current) textareaRef.current?.focus();
-    }, 250);
-    return () => clearTimeout(t);
+    if (!editing) return;
+    const t0 = setTimeout(() => focusEnd(textareaRef.current), 30);
+    const t = setTimeout(() => { if (document.activeElement !== textareaRef.current) focusEnd(textareaRef.current); }, 280);
+    return () => { clearTimeout(t0); clearTimeout(t); };
   }, [editing]);
 
   // El tamaño del texto lo decide su contenido; se guarda medido (para exportar y colocar sin solapes)
@@ -91,28 +79,9 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
     leaveTimer.current = setTimeout(() => setHovered(false), HOVER_GRACE_MS);
   };
 
-  const activeFont = textFont(fontFamily);
   const showToolbar = !touchUI && (selected || hovered || isEditing);
   const isEmpty = text.trim() === '' && !editing;
-
-  const containerStyle: React.CSSProperties = showBackground
-    ? {
-        backgroundColor: bgColor,
-        color: textColor,
-        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-        textShadow: effectShadow(textEffect, true),
-        borderRadius: roundShape ? '0.9em' : '0.4em',
-        padding: roundShape ? '0.5em 0.9em' : '0.6em 0.8em',
-      }
-    : {
-        backgroundColor: 'transparent',
-        color: textColor,
-        textShadow: effectShadow(textEffect, false),
-        padding: '0.4em',
-        // Texto vacío sin fondo: solo un contorno tenue mientras se interactúa, para poder encontrarlo
-        outline: isEmpty && (selected || hovered) ? '2px dashed rgba(99,102,241,0.5)' : undefined,
-        borderRadius: '0.4em',
-      };
+  const rotation = data.rotation || 0;
 
   const btn = (active: boolean) =>
     `p-1 rounded-lg transition-colors ${active ? 'bg-white/25' : 'hover:bg-white/15'}`;
@@ -120,11 +89,12 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
   return (
     <div 
       className="relative group select-none"
+      style={{ transform: rotation ? `rotate(${rotation}deg)` : undefined, transformOrigin: 'center' }}
       onDoubleClick={() => { if (!touchUI) setIsEditing(true); }}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
     >
-      <ResizeHandles id={id} xPos={xPos} yPos={yPos} mode="font" fontSize={fontSize} visible={selected && !studioOpen && !isEditing} />
+      <ResizeHandles id={id} xPos={xPos} yPos={yPos} mode="font" fontSize={fontSize} rotation={rotation} rotatable visible={selected && !studioOpen && !isEditing} />
 
       {/* Barra de edición. Su contenedor (pb-3 transparente) hace de "puente de seguridad"
           entre el texto y los botones: moverse hacia ella nunca sale del hover. */}
@@ -243,41 +213,26 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
         </div>
       )}
 
-      {/* Texto: la caja se ajusta al contenido; al editar, el textarea se superpone con el mismo formato */}
       <div
-        ref={boxRef}
-        style={{ ...containerStyle, fontSize: `${fontSize}px`, lineHeight: 1.3, width: 'max-content', minWidth: '3em', ...activeFont.style }}
-        className={`relative transition-[background-color,box-shadow] duration-200 ${activeFont.className}`}
+        style={{
+          outline: selected && !studioOpen ? '1.5px solid rgba(99,102,241,0.75)' : (isEmpty && hovered ? '2px dashed rgba(99,102,241,0.5)' : undefined),
+          outlineOffset: 1,
+          borderRadius: 6,
+        }}
       >
-        <div
-          className="whitespace-pre font-bold select-none"
-          style={{ textAlign, minHeight: '1.3em', visibility: editing ? 'hidden' : 'visible' }}
-        >
-          {shown}{'\u200b'}
-        </div>
-        {editing && (
-          <>
-            {shown === '' && (
-              <div className="absolute inset-0 whitespace-pre font-bold opacity-40 pointer-events-none" style={{ padding: 'inherit', textAlign }}>Escribe aquí…</div>
-            )}
-            <textarea
-              ref={textareaRef}
-              value={draft}
-              onChange={(e) => { setDraft(e.target.value); updateNodeData(id, { description: e.target.value }); }}
-              onBlur={() => { if (!studioOpen) setIsEditing(false); }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey && !studioOpen) {
-                  e.preventDefault();
-                  setIsEditing(false);
-                }
-              }}
-              wrap="off"
-              spellCheck={false}
-              className="absolute inset-0 w-full h-full bg-transparent outline-none resize-none overflow-hidden nodrag nopan whitespace-pre font-bold"
-              style={{ padding: 'inherit', textAlign, color: textColor, fontSize: 'inherit', lineHeight: 'inherit', textShadow: 'inherit', fontFamily: 'inherit' }}
-            />
-          </>
-        )}
+        <TextBlock
+          ref={boxRef}
+          text={text}
+          sc={styleConfig}
+          fontPx={fontSize}
+          edit={editing ? {
+            editRef: textareaRef,
+            onChange: v => updateNodeData(id, { description: v }),
+            onBlur: () => setIsEditing(false),
+            onKeyDown: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setIsEditing(false); } },
+            placeholder: 'Escribe aquí…',
+          } : undefined}
+        />
       </div>
     </div>
   );

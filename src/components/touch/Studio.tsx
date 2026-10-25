@@ -2,12 +2,13 @@ import { memo, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useReactFlow } from 'reactflow';
 import {
-  AlignLeft, AlignCenter, AlignRight, Trash2, Check, PaintBucket, Square, RectangleHorizontal, ImagePlus,
+  AlignLeft, AlignCenter, AlignRight, Trash2, PaintBucket, Square, RectangleHorizontal, ImagePlus,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import { TEXT_FONTS } from '../../lib/textFonts';
 import { entityRect } from '../../lib/viewport';
+import TextStudio from './TextStudio';
 import type { ArrowStyle, ImageShape, NodeData } from '../../types/store';
 
 /**
@@ -96,15 +97,6 @@ const Studio = () => {
     return () => document.documentElement.classList.remove('studio-open');
   }, [studioId]);
 
-  // Un texto recién creado trae "Texto..." de relleno: aquí se empieza a escribir desde cero
-  useEffect(() => {
-    if (!studioId) return;
-    const n = useStore.getState().nodes.find(x => x.id === studioId);
-    if (n?.type === 'textAnnotation' && n.data.description === 'Texto...') {
-      useStore.getState().updateNodeData(studioId, { description: '' }, { history: false });
-    }
-  }, [studioId]);
-
   // Centra el elemento en el hueco visible entre la cabecera y el panel de opciones
   const exists = !!node;
   useEffect(() => {
@@ -130,9 +122,10 @@ const Studio = () => {
   }, [studioId, exists, kb, flow]);
 
   if (!studioId || !node) return null;
+  if (node.type === 'textAnnotation') return <TextStudio key={node.id} id={node.id} />;
   const id = node.id;
   const data = node.data as NodeData;
-  const type = node.type;
+  const type: string = node.type;
 
   const patchData = (p: Partial<NodeData>) => updateNodeData(id, p);
   const sc = data.styleConfig || {};
@@ -184,27 +177,22 @@ const Studio = () => {
   return (
     <div className="fixed inset-0 z-[70] pointer-events-none" data-studio>
       {/* Barra superior */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-3 pointer-events-auto bg-gray-900" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))', paddingBottom: 8 }}>
-        <button type="button" onClick={remove} aria-label="Eliminar" className="min-w-[44px] min-h-[44px] rounded-full bg-white/15 text-red-300 flex items-center justify-center active:scale-95">
-          <Trash2 size={20} />
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pointer-events-auto bg-black/55 backdrop-blur-sm" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))', paddingBottom: 6 }}>
+        <button type="button" onClick={remove} aria-label="Eliminar" className="min-w-[44px] min-h-[44px] flex items-center justify-start text-white/75 active:scale-95">
+          <Trash2 size={22} />
         </button>
-        <span className="text-white font-bold text-sm tracking-wide">{title}</span>
-        <button type="button" onClick={finish} className="min-h-[44px] px-5 rounded-full bg-indigo-500 text-white font-bold flex items-center gap-1.5 active:scale-95">
-          <Check size={18} /> Listo
-        </button>
+        <span className="text-white/80 font-semibold text-sm tracking-wide">{title}</span>
+        <button type="button" onClick={finish} className="min-h-[44px] px-2 text-[17px] font-bold text-white active:scale-95">Listo</button>
       </div>
 
       {/* Barra lateral de tamaño */}
       {side && (
-        <div className="absolute left-2 top-[72px] pointer-events-auto flex flex-col items-center gap-2 bg-black/45 rounded-full py-3 px-1" data-studio-side>
-          <span className="text-white text-[10px] font-bold">{side.label}</span>
-          <input
-            type="range" min={side.min} max={side.max} step={side.step} value={side.value}
-            onChange={e => side!.onChange(Number(e.target.value))}
-            aria-label="Tamaño"
-            style={{ writingMode: 'vertical-lr', direction: 'rtl', height: 'min(30vh, 220px)', width: 36, accentColor: '#ffffff', touchAction: 'none' }}
-          />
-        </div>
+        <input
+          type="range" min={side.min} max={side.max} step={side.step} value={side.value}
+          onChange={e => side!.onChange(Number(e.target.value))}
+          aria-label="Tamaño" className="ig-range pointer-events-auto" data-studio-side
+          style={{ position: 'absolute', left: 6, top: 96, height: 'min(32vh, 260px)', zIndex: 5 }}
+        />
       )}
 
       {/* Opciones, encima del teclado */}

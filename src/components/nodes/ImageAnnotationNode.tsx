@@ -49,6 +49,7 @@ const ImageAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
   const zoom = style.zoom ?? 1;
   const offsetX = style.offsetX ?? 0;
   const offsetY = style.offsetY ?? 0;
+  const rotation = data.rotation || 0;
   const clipId = `heart-clip-${id}`;
   const keepAspect = shape === 'circle' || shape === 'star' || shape === 'heart';
 
@@ -104,8 +105,8 @@ const ImageAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
   };
 
   return (
-    <div className="relative group select-none">
-      <ResizeHandles id={id} xPos={xPos} yPos={yPos} mode={keepAspect ? 'uniform' : 'free'} visible={selected && !crop} minW={60} minH={60} />
+    <div className="relative group select-none" style={{ transform: rotation ? `rotate(${rotation}deg)` : undefined, transformOrigin: 'center' }}>
+      <ResizeHandles id={id} xPos={xPos} yPos={yPos} mode={keepAspect ? 'uniform' : 'free'} rotation={rotation} rotatable visible={selected && !crop} minW={60} minH={60} />
 
       <input 
         type="file" 
