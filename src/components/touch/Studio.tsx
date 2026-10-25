@@ -46,6 +46,62 @@ function useKeyboardOffset() {
   return offset;
 }
 
+type ArrowTab = 'color' | 'puntas' | 'medidas';
+const SliderRow = ({ label, min, max, step, value, onChange }: { label: string; min: number; max: number; step: number; value: number; onChange: (v: number) => void }) => (
+  <div className="flex items-center gap-3 px-1 min-h-[44px]">
+    <span className="text-xs font-bold text-gray-300 w-14">{label}</span>
+    <input
+      type="range" min={min} max={max} step={step} value={value}
+      onChange={e => onChange(Number(e.target.value))}
+      className="flex-1" style={{ accentColor: '#ffffff', height: 36 }} aria-label={label}
+    />
+  </div>
+);
+
+/** Panel de la flecha en pestañas: solo se ve un grupo de opciones a la vez. */
+const ArrowTabs = ({ ast, patchArrow }: { ast: ArrowStyle; patchArrow: (p: Partial<ArrowStyle>) => void }) => {
+  const [tab, setTab] = useState<ArrowTab>('color');
+  const tabs: [ArrowTab, string][] = [['color', 'Color'], ['puntas', 'Puntas'], ['medidas', 'Medidas']];
+  return (
+    <>
+      <div className="flex gap-1 p-1 rounded-full bg-white/10 self-start" role="tablist">
+        {tabs.map(([id, label]) => (
+          <button
+            key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
+            className={`min-h-[36px] px-4 rounded-full text-sm font-bold select-none transition ${tab === id ? 'bg-white text-gray-900' : 'text-white/80'}`}
+          >{label}</button>
+        ))}
+      </div>
+      {tab === 'color' && (
+        <>
+          <Row><Swatches value={ast.color || '#475569'} onPick={c => patchArrow({ color: c })} /></Row>
+          <Row>{DASHES.map(d => <Chip key={d.id} active={(ast.dash || 'solid') === d.id} onClick={() => patchArrow({ dash: d.id })}>{d.label}</Chip>)}</Row>
+        </>
+      )}
+      {tab === 'puntas' && (
+        <>
+          <Row>{HEADS.map(h => <Chip key={h.id} active={(ast.head || 'end') === h.id} onClick={() => patchArrow({ head: h.id })}>{h.label}</Chip>)}</Row>
+          <Row>
+            {HEAD_SHAPES.map(h => <Chip key={h.id} active={(ast.headShape || 'triangle') === h.id} onClick={() => patchArrow({ headShape: h.id })} className="min-w-[44px] justify-center"><span aria-label={`Cabeza ${h.id}`}>{h.label}</span></Chip>)}
+          </Row>
+          <Row>
+            {([['shadow', 'Sombra'], ['outline', 'Contorno'], ['depth', '3D']] as const).map(([k, l]) => (
+              <Chip key={k} active={!!ast[k]} onClick={() => patchArrow({ [k]: !ast[k] })}>{l}</Chip>
+            ))}
+          </Row>
+        </>
+      )}
+      {tab === 'medidas' && (
+        <>
+          <SliderRow label="Cabeza" min={1} max={40} step={1} value={ast.headThickness ?? ast.thickness ?? 4} onChange={v => patchArrow({ headThickness: v })} />
+          <SliderRow label="Curva" min={-300} max={300} step={1} value={ast.bend ?? 0} onChange={v => patchArrow({ bend: v })} />
+          <SliderRow label="Largo" min={30} max={800} step={5} value={ast.length ?? 160} onChange={v => patchArrow({ length: v })} />
+        </>
+      )}
+    </>
+  );
+};
+
 const Row = ({ children }: { children: ReactNode }) => (
   <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1" style={{ touchAction: 'pan-x' }}>{children}</div>
 );
@@ -276,48 +332,7 @@ const Studio = () => {
           </>
         )}
 
-        {type === 'arrowAnnotation' && (
-          <>
-            <Row><Swatches value={ast.color || '#475569'} onPick={c => patchArrow({ color: c })} /></Row>
-            <Row>
-              {DASHES.map(d => <Chip key={d.id} active={(ast.dash || 'solid') === d.id} onClick={() => patchArrow({ dash: d.id })}>{d.label}</Chip>)}
-              <span className="w-px h-6 bg-white/25 shrink-0" />
-              {HEADS.map(h => <Chip key={h.id} active={(ast.head || 'end') === h.id} onClick={() => patchArrow({ head: h.id })}>{h.label}</Chip>)}
-            </Row>
-            <Row>
-              {HEAD_SHAPES.map(h => <Chip key={h.id} active={(ast.headShape || 'triangle') === h.id} onClick={() => patchArrow({ headShape: h.id })} className="min-w-[44px] justify-center"><span aria-label={`Cabeza ${h.id}`}>{h.label}</span></Chip>)}
-            </Row>
-            <Row>
-              {([['shadow', 'Sombra'], ['outline', 'Contorno'], ['depth', '3D']] as const).map(([k, l]) => (
-                <Chip key={k} active={!!ast[k]} onClick={() => patchArrow({ [k]: !ast[k] })}>{l}</Chip>
-              ))}
-            </Row>
-            <div className="flex items-center gap-3 px-1 min-h-[44px]">
-              <span className="text-xs font-bold text-gray-300 w-14">Cabeza</span>
-              <input
-                type="range" min={1} max={40} step={1} value={ast.headThickness ?? ast.thickness ?? 4}
-                onChange={e => patchArrow({ headThickness: Number(e.target.value) })}
-                className="flex-1" style={{ accentColor: '#ffffff', height: 36 }} aria-label="Cabeza"
-              />
-            </div>
-            <div className="flex items-center gap-3 px-1 min-h-[44px]">
-              <span className="text-xs font-bold text-gray-300 w-14">Curva</span>
-              <input
-                type="range" min={-300} max={300} step={1} value={ast.bend ?? 0}
-                onChange={e => patchArrow({ bend: Number(e.target.value) })}
-                className="flex-1" style={{ accentColor: '#ffffff', height: 36 }} aria-label="Curva"
-              />
-            </div>
-            <div className="flex items-center gap-3 px-1 min-h-[44px]">
-              <span className="text-xs font-bold text-gray-300 w-14">Largo</span>
-              <input
-                type="range" min={30} max={800} step={5} value={ast.length ?? 160}
-                onChange={e => patchArrow({ length: Number(e.target.value) })}
-                className="flex-1" style={{ accentColor: '#ffffff', height: 36 }} aria-label="Largo"
-              />
-            </div>
-          </>
-        )}
+        {type === 'arrowAnnotation' && <ArrowTabs ast={ast} patchArrow={patchArrow} />}
       </div>
     </div>
   );
