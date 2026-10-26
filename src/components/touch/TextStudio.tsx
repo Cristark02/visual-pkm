@@ -3,7 +3,7 @@ import { useReactFlow } from 'reactflow';
 import { AlignLeft, AlignCenter, AlignRight, Trash2, Square } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
-import { TEXT_FONTS } from '../../lib/textFonts';
+import { TEXT_FONTS, TEXT_EFFECTS } from '../../lib/textFonts';
 import TextBlock, { focusEnd } from '../TextBlock';
 import type { NodeData } from '../../types/store';
 
@@ -15,9 +15,7 @@ import type { NodeData } from '../../types/store';
  * El texto se guarda en vivo; "Listo" solo cierra. Luego se coloca, escala y gira en el lienzo.
  */
 const PALETTE = ['#ffffff', '#000000', '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899'];
-const EFFECTS = [
-  { id: 'none', label: 'Ninguno' }, { id: 'shadow', label: 'Sombra' }, { id: 'outline', label: 'Contorno' }, { id: 'glow', label: 'Brillo' },
-] as const;
+const EFFECTS = TEXT_EFFECTS;
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 type Tool = 'font' | 'color' | 'effect';

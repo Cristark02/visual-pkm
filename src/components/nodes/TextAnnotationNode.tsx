@@ -6,7 +6,7 @@ import type { NodeData } from '../../types/store';
 import { useStore } from '../../store/useStore';
 import { useUI } from '../../store/useUI';
 import { useUIMode } from '../../lib/useMedia';
-import { TEXT_FONTS } from '../../lib/textFonts';
+import { TEXT_FONTS, TEXT_EFFECTS } from '../../lib/textFonts';
 import TextBlock, { focusEnd } from '../TextBlock';
 
 const ALIGNS = [
@@ -98,15 +98,17 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
           entre el texto y los botones: moverse hacia ella nunca sale del hover. */}
       {showToolbar && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 pb-3 z-50 nodrag nopan">
-          <div className="bg-gray-900/90 backdrop-blur-md px-2 py-1.5 rounded-2xl shadow-xl flex flex-wrap items-center justify-center gap-1.5 text-white max-w-[340px] animate-in fade-in duration-150">
+          <div className="bg-gray-900/90 backdrop-blur-md px-2 py-1.5 rounded-2xl shadow-xl flex flex-col items-center gap-1.5 text-white max-w-[460px] animate-in fade-in duration-150">
+            <div className="flex items-center gap-1.5">
             {/* Tipografía */}
             <div className="flex items-center gap-0.5">
-              {TEXT_FONTS.slice(0, 3).map(f => (
+              {TEXT_FONTS.map(f => (
                 <button
                   key={f.id}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); patch({ fontFamily: f.id }); }}
                   className={`${btn(fontFamily === f.id)} text-xs font-bold px-1.5 ${f.className}`}
+                  style={{ ...f.style, textTransform: 'none', letterSpacing: 'normal' }}
                   title={`Tipografía: ${f.name}`}
                 >
                   Aa
@@ -158,8 +160,10 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
               )}
             </div>
 
+            </div>
+            <div className="flex items-center gap-1.5">
             {/* Colores libres */}
-            <div className="flex items-center gap-1 border-l border-white/20 pl-1.5">
+            <div className="flex items-center gap-1">
               <label className="flex items-center gap-1 text-[10px] font-bold text-gray-300" title="Color del texto">
                 A
                 <input
@@ -199,6 +203,31 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
               ))}
             </div>
 
+            </div>
+            <div className="flex items-center gap-1.5">
+            {/* Efectos y tamaño (mismos que en el editor táctil) */}
+            <div className="flex items-center gap-0.5">
+              {TEXT_EFFECTS.map(ef => (
+                <button
+                  key={ef.id}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); patch({ textEffect: ef.id }); }}
+                  className={`${btn((styleConfig.textEffect ?? (showBackground ? 'none' : 'shadow')) === ef.id)} text-[10px] font-bold px-1.5`}
+                  title={`Efecto: ${ef.label}`}
+                >
+                  {ef.label}
+                </button>
+              ))}
+            </div>
+            <label className="flex items-center gap-1 border-l border-white/20 pl-1.5 text-[10px] font-bold uppercase text-gray-300" title="Tamaño del texto">
+              Tamaño
+              <input
+                type="range" min={10} max={160} step={1} value={Math.round(fontSize)}
+                onChange={(e) => patch({ fontSize: parseInt(e.target.value) })}
+                className="w-20 accent-indigo-400"
+              />
+            </label>
+
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); removeNode(id); }}
@@ -207,6 +236,7 @@ const TextAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeDa
             >
               <Trash2 size={13} />
             </button>
+            </div>
           </div>
         </div>
       )}

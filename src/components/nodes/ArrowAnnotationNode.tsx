@@ -156,6 +156,24 @@ const ArrowAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
               className="w-16 accent-indigo-400"
             />
           </label>
+          <label className="flex items-center gap-1 text-[10px] font-bold uppercase text-gray-300" title="Curvatura">
+            Curva
+            <input
+              type="range" min={-300} max={300} step={1}
+              value={Math.round(st.bend ?? 0)}
+              onChange={e => patchStyle({ bend: parseInt(e.target.value) })}
+              className="w-16 accent-indigo-400"
+            />
+          </label>
+          <label className="flex items-center gap-1 text-[10px] font-bold uppercase text-gray-300" title="Largo">
+            Largo
+            <input
+              type="range" min={30} max={800} step={5}
+              value={Math.round(length)}
+              onChange={e => patchStyle({ length: parseInt(e.target.value) })}
+              className="w-16 accent-indigo-400"
+            />
+          </label>
           <div className="flex items-center gap-0.5 border-l border-white/20 pl-2">
             {DASHES.map(d => (
               <button

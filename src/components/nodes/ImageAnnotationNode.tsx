@@ -133,6 +133,17 @@ const ImageAnnotationNode = ({ id, data, selected, xPos, yPos }: NodeProps<NodeD
             title="Zoom"
           />
         )}
+        <label className="flex items-center gap-1 px-1 text-[10px] font-bold uppercase text-gray-300" title="Tamaño de la foto">
+          Tam.
+          <input
+            type="range" min={60} max={700} step={5} value={Math.round(w)}
+            onChange={e => {
+              const nw = parseInt(e.target.value);
+              updateNodeData(id, { visualDimensions: { width: nw, height: Math.round(nw * (h / (w || 1))) } });
+            }}
+            className="w-20 accent-indigo-400"
+          />
+        </label>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}

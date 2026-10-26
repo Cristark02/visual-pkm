@@ -23,3 +23,8 @@ export function effectShadow(effect: string | undefined, hasBackground: boolean)
     default: return hasBackground ? undefined : '0 2px 8px rgba(0,0,0,0.3)';
   }
 }
+
+/** Efectos de texto (compartidos por el editor táctil y la barra de escritorio). */
+export const TEXT_EFFECTS = [
+  { id: 'none', label: 'Ninguno' }, { id: 'shadow', label: 'Sombra' }, { id: 'outline', label: 'Contorno' }, { id: 'glow', label: 'Brillo' },
+] as const;
